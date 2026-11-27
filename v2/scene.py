@@ -2011,8 +2011,10 @@ def main():
     r.image_settings.file_format = "JPEG"
     r.image_settings.quality = 96
     r.use_persistent_data = True
+    rate = float(os.environ.get("RATE") or FPS)
+    r.fps = round(rate)
     r.use_motion_blur = True
-    r.motion_blur_shutter = 0.16
+    r.motion_blur_shutter = 0.16 * rate / FPS
     c = scene.cycles
     c.samples = 48
     if os.environ.get("HIGH"):
@@ -2111,9 +2113,9 @@ def main():
         camera.animation_data_clear()
         previous.clear()
         for step in (-1, 0, 1):
-            place((frame + step) / FPS, outside)
+            place((frame + step) / rate, outside)
             keyed(moving, camera, frame + step)
-        place(frame / FPS, outside)
+        place(frame / rate, outside)
         scene.frame_set(frame)
         r.filepath = os.path.join(OUT, name + ".jpg")
         bpy.ops.render.render(write_still=True)
