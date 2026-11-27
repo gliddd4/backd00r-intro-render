@@ -2291,10 +2291,10 @@ def main():
         camera.lens = lens
         frame = car_frame(t)
         car.location = frame.translation
-        for other, x, y, speed, wheels in traffic:
-            other.location = (x, y + speed * t, 0)
+        for other, x, y, pace, wheels in traffic:
+            other.location = (x, y + pace * t, 0)
             for hub, r in wheels:
-                hub.rotation_euler = (-abs(speed) * t / r, 0, 0)
+                hub.rotation_euler = (-abs(pace) * t / r, 0, 0)
         turn(car, frame.to_quaternion())
         y_now = frame.translation.y
         bend = (car_x(y_now + 2.0) - 2 * car_x(y_now) + car_x(y_now - 2.0)) / 4.0
