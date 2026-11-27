@@ -89,6 +89,7 @@ bpy.ops.wm.save_as_mainfile(filepath=os.path.join(OUT, "ladder3d.blend"))
 
 shard, shards = (int(v) for v in sys.argv[-2:])
 views = ["cover", "front"]
+scene.camera.rotation_euler = (math.pi / 2 + math.radians(FIT.get("camera_pitch", 0.0)), 0, 0)
 for k, view in enumerate(views):
     if k % shards != shard:
         continue
