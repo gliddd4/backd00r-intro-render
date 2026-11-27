@@ -30,7 +30,7 @@ os.makedirs(OUT, exist_ok=True)
 
 FPS = 24
 
-LENGTH = 15.0
+LENGTH = 16.4
 
 FRAMES = int(round(LENGTH * FPS)) + 1
 
@@ -507,14 +507,14 @@ def flight_plan():
     def near(x, y, z):
         return ladder_at + Vector((x, y, z))
 
-    path = [(10.5, start), (11.3, start + Vector((0, 4, 20))), (12.0, start + Vector((0, 10, 40))), (12.6, start + Vector((0, 16, 62))), (13.2, start + Vector((0, 24, 86))), (13.7, start + Vector((0, 32, 93))), (14.3, start + Vector((0, 46, 97))), (15.0, start + Vector((0, 64, 99)))]
-    look = [(10.5, aim), (11.3, start + Vector((0, 10, 34))), (12.0, start + Vector((0, 17, 60))), (12.6, start + Vector((0, 22, 86))), (13.2, start + Vector((0, 30, 114))), (13.7, start + Vector((0, 40, 122))), (14.3, start + Vector((0, 76, 100))), (15.0, start + Vector((0, 90, 86.9)))]
+    path = [(10.5, start), (11.3, start + Vector((0, 4, 20))), (12.0, start + Vector((0, 10, 40))), (12.6, start + Vector((0, 16, 62))), (13.2, start + Vector((0, 24, 86))), (13.7, start + Vector((0, 32, 93))), (14.4, start + Vector((0, 40, 97))), (15.2, start + Vector((0, 50, 99))), (16.4, start + Vector((0, 66, 99)))]
+    look = [(10.5, aim), (11.3, start + Vector((0, 10, 34))), (12.0, start + Vector((0, 17, 60))), (12.6, start + Vector((0, 22, 86))), (13.2, start + Vector((0, 30, 114))), (13.7, start + Vector((0, 40, 122))), (14.4, start + Vector((0, 46, 128))), (15.2, start + Vector((0, 60, 124))), (16.4, start + Vector((0, 92, 86.9)))]
     return start, ladder_at, (path, slopes(path, velocity)), (look, slopes(look, turn))
 
 START, LADDER_AT, PATH, LOOK = flight_plan()
 
 def lens_at(t):
-    keys = [(8.6, 24), (15.0, 24)]
+    keys = [(8.6, 24), (16.4, 24)]
     for (a, p), (b, q) in zip(keys, keys[1:]):
         if t <= b:
             return p + (q - p) * smooth((t - a) / (b - a))
