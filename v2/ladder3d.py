@@ -39,7 +39,7 @@ def beam(name, start, end, width, depth, side, material, edge, rough=1.0):
         for j in range(sides):
             a = j / sides * math.tau
             c, s = math.cos(a), math.sin(a)
-            r = 1.0 / max(abs(c), abs(s)) ** 0.85
+            r = 1.0 / max(abs(c), abs(s)) ** 0.97
             p = Vector((c * r * width / 2, s * r * depth / 2, f * length))
             world = start + basis.to_3x3() @ p
             n = noise.noise(world * 7.0) * 1.5 + noise.noise(world * 19.0) * 0.8 + noise.noise(world * 47.0) * 0.4
@@ -71,7 +71,7 @@ ladder = bpy.data.objects.new("ladder3d", None)
 scene.collection.objects.link(ladder)
 rail_len = (top_l - foot_l).length
 burn = (flame_at - foot_l).length - 0.45
-RAIL_DEEP, RAIL_WIDE, STEP_WIDE, STEP_THICK = 0.13, 0.15, 0.11, 0.11
+RAIL_DEEP, RAIL_WIDE, STEP_WIDE, STEP_THICK = 0.14, 0.19, 0.11, 0.11
 parts = [
     beam("left", foot_l, top_l, RAIL_DEEP, RAIL_WIDE, normal, wood("l", 1, char_from=burn, tint=0.82), wood("le", 11, char_from=burn, tint=0.82), 0.35),
     beam("right", foot_r, top_r, RAIL_DEEP, RAIL_WIDE, normal, wood("r", 2, char_from=rail_len + 0.4, tint=0.82), wood("re", 12, char_from=rail_len + 0.4, tint=0.82), 0.35),
@@ -80,9 +80,25 @@ flat = Vector((0, 0, 1)).cross(across).normalized()
 if flat.dot(normal) < 0:
     flat = -flat
 on_top = normal * (RAIL_DEEP / 2) + Vector((0, 0, STEP_THICK / 2)) + flat * 0.0
+pitch = math.radians(FIT.get("camera_pitch", 0.0))
+
+
+def seen(q):
+    yy = q.y * math.cos(pitch) + q.z * math.sin(pitch)
+    zz = -q.y * math.sin(pitch) + q.z * math.cos(pitch)
+    return Vector((q.x / yy, zz / yy))
+
+
+def settle(a, b):
+    mid = (Vector(a) + Vector(b)) / 2
+    best = min((k / 2000.0 for k in range(-1000, 1001)), key=lambda t: (seen(mid + on_top - up * t) - seen(mid)).length)
+    return on_top - up * best
+
+
 for n, (a, b) in enumerate(FIT["rungs"]):
+    lift = settle(a, b)
     step_wood = wood("g%d" % n, 3 + n, char_from=None, tint=0.95)
-    parts.append(beam("rung%d" % n, Vector(a) + on_top, Vector(b) + on_top, STEP_WIDE, STEP_THICK, flat, step_wood, step_wood, 0.3))
+    parts.append(beam("rung%d" % n, Vector(a) + lift, Vector(b) + lift, STEP_WIDE, STEP_THICK, flat, step_wood, step_wood, 0.3))
 for obj in parts:
     world = obj.matrix_world.copy()
     obj.parent = ladder
