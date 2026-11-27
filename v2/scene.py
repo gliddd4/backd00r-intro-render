@@ -1428,10 +1428,11 @@ def cloud_matter(name="cloud_volume", thickness=2.4, glow=0.24):
     amount = op(t, "MULTIPLY", attribute.outputs["Fac"], thickness)
     scatter = new(t, "ShaderNodeVolumeScatter")
     scatter.inputs["Anisotropy"].default_value = 0.25
-    wire(t, blend(t, shared(t, NIGHT), (0.98, 0.86, 0.80, 1), (1.0, 0.95, 0.86, 1)), scatter.inputs["Color"])
+    far = remap(t, new(t, "ShaderNodeCameraData").outputs["View Distance"], 150.0, 1500.0, 0.0, 0.55)
+    wire(t, blend(t, far, blend(t, shared(t, NIGHT), (0.98, 0.86, 0.80, 1), (1.0, 0.95, 0.86, 1)), (1.0, 0.84, 0.55, 1)), scatter.inputs["Color"])
     wire(t, amount, scatter.inputs["Density"])
     ambient = new(t, "ShaderNodeEmission")
-    wire(t, blend(t, shared(t, NIGHT), lin((116, 96, 118)), lin((96, 140, 208))), ambient.inputs["Color"])
+    wire(t, blend(t, far, blend(t, shared(t, NIGHT), lin((116, 96, 118)), lin((96, 140, 208))), lin((214, 178, 120))), ambient.inputs["Color"])
     wire(t, op(t, "MULTIPLY", amount, glow), ambient.inputs["Strength"])
     add = new(t, "ShaderNodeAddShader")
     t.links.new(scatter.outputs[0], add.inputs[0])
@@ -1570,13 +1571,28 @@ def sea_slab(name, mat, ladder_at, low, high, resolution):
     return obj
 
 
-def build_sea(ladder_at):
+def cloud_field(add, rnd, x0, x1, y0, y1, z, spacing, small, big):
+    field = []
+    gx = x0
+    while gx < x1:
+        gy = y0
+        while gy < y1:
+            if rnd.random() > 0.25:
+                loc = Vector((gx + rnd.uniform(-0.4, 0.4) * spacing, gy + rnd.uniform(-0.4, 0.4) * spacing, z + rnd.uniform(-1.5, 1.5)))
+                field.append(add(loc, rnd.uniform(small, big), 0.6))
+            gy += spacing
+        gx += spacing
+    return field
+
+
+def build_sea(ladder_at, add):
     mat = cloud_matter("cloud_sea", 3.2, 0.05)
     mat.cycles.volume_step_rate = 0.4
     x, y, z = ladder_at
     low, high = z - 12.5, z - 1.2
-    near = sea_slab("sea_near", mat, ladder_at, (x - 70, y - 34, low), (x + 70, y + 200, high), (200, 330, 36))
-    mid = sea_slab("sea_mid", mat, ladder_at, (x - 400, y + 200, low), (x + 400, y + 700, high), (300, 190, 18))
+    rnd = random.Random(31)
+    near = cloud_field(add, rnd, x - 70, x + 70, y - 34, y + 200, z - 7.0, 24.0, 7.0, 10.0)
+    mid = cloud_field(add, rnd, x - 400, x + 400, y + 200, y + 700, z - 7.0, 34.0, 10.0, 14.0)
     far = sea_slab("sea_far", mat, ladder_at, (x - 1500, y + 700, low), (x + 1500, y + 2500, high), (300, 180, 12))
     left = sea_slab("sea_left", mat, ladder_at, (x - 1500, y - 34, low), (x - 70, y + 200, high), (150, 26, 12))
     right = sea_slab("sea_right", mat, ladder_at, (x + 70, y - 34, low), (x + 1500, y + 200, high), (150, 26, 12))
@@ -1588,7 +1604,7 @@ def build_sea(ladder_at):
     t.links.new(gradient(t, grain(t, place, (0.05, 0.05, 0.05), 6, 0.65), [(0.38, (54, 94, 150)), (0.55, (104, 146, 192)), (0.7, (176, 198, 216))]), emission.inputs["Color"])
     t.links.new(emission.outputs[0], out.inputs["Surface"])
     under = mesh_object("under", [(x - 1500, y - 200, low - 0.4), (x + 1500, y - 200, low - 0.4), (x + 1500, y + 2500, low - 0.4), (x - 1500, y + 2500, low - 0.4)], [(0, 1, 2, 3)], deep)
-    return [near, mid, far, left, right, mid_left, mid_right, under]
+    return near + mid + [far, left, right, mid_left, mid_right, under]
 
 
 def build_clouds(base, ladder_at):
@@ -1614,7 +1630,7 @@ def build_clouds(base, ladder_at):
         if min((loc - p).length for p in route) > size * 1.5 + 1.5:
             layer.append(add(loc, size, 0.8))
     tower = add(base + Vector((0, 16, 62)), 24.0)
-    return layer, tower, build_sea(ladder_at)
+    return layer, tower, build_sea(ladder_at, add)
 
 
 def build_flame(parent, location):
