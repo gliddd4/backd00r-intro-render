@@ -9,7 +9,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
+        shard: [0, 1]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -30,9 +30,9 @@ jobs:
           pip install -q "bpy==4.5.*"
           python v2/fetch.py assets
       - env:
-          RATE: "5"
+          RATE: "20"
           HIGH: ""
-          SCRIPT: "scene.py"
+          SCRIPT: "ladder3d.py"
         run: python v2/$SCRIPT ${{ matrix.shard }} ${{ strategy.job-total }}
       - uses: actions/upload-artifact@v4
         if: always()
