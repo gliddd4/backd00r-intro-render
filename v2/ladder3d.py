@@ -39,7 +39,7 @@ def beam(name, start, end, width, depth, side, material, edge, rough=1.0):
         for j in range(sides):
             a = j / sides * math.tau
             c, s = math.cos(a), math.sin(a)
-            r = 1.0 / max(abs(c), abs(s)) ** 0.97
+            r = 1.0 / max(abs(c), abs(s)) ** 0.45
             p = Vector((c * r * width / 2, s * r * depth / 2, f * length))
             world = start + basis.to_3x3() @ p
             n = noise.noise(world * 7.0) * 1.5 + noise.noise(world * 19.0) * 0.8 + noise.noise(world * 47.0) * 0.4
@@ -71,10 +71,10 @@ ladder = bpy.data.objects.new("ladder3d", None)
 scene.collection.objects.link(ladder)
 rail_len = (top_l - foot_l).length
 burn = (flame_at - foot_l).length - 0.45
-RAIL_DEEP, RAIL_WIDE, STEP_WIDE, STEP_THICK = 0.136, 0.121, 0.065, 0.09
+RAIL_DEEP, RAIL_WIDE, STEP_WIDE, STEP_THICK, STEP_OVERHANG = 0.136, 0.121, 0.075, 0.05, 0.15
 parts = [
-    beam("left", foot_l, top_l, RAIL_DEEP, RAIL_WIDE, normal, wood("l", 1, char_from=burn, tint=0.82), wood("le", 11, char_from=burn, tint=0.82), 0.35),
-    beam("right", foot_r, top_r, RAIL_DEEP, RAIL_WIDE, normal, wood("r", 2, char_from=rail_len + 0.4, tint=0.82), wood("re", 12, char_from=rail_len + 0.4, tint=0.82), 0.35),
+    beam("left", foot_l, top_l, RAIL_DEEP, RAIL_WIDE, normal, wood("l", 1, char_from=burn, tint=1.0), wood("le", 11, char_from=burn, tint=1.0), 0.35),
+    beam("right", foot_r, top_r, RAIL_DEEP, RAIL_WIDE, normal, wood("r", 2, char_from=rail_len + 0.4, tint=1.0), wood("re", 12, char_from=rail_len + 0.4, tint=1.0), 0.35),
 ]
 flat = Vector((0, 0, 1)).cross(across).normalized()
 if flat.dot(normal) < 0:
@@ -98,7 +98,8 @@ def settle(a, b):
 for n, (a, b) in enumerate(FIT["rungs"]):
     lift = settle(a, b)
     step_wood = wood("g%d" % n, 3 + n, char_from=None, tint=0.95)
-    parts.append(beam("rung%d" % n, Vector(a) + lift, Vector(b) + lift, STEP_WIDE, STEP_THICK, flat, step_wood, step_wood, 0.3))
+    b = Vector(b) + (Vector(b) - Vector(a)).normalized() * STEP_OVERHANG
+    parts.append(beam("rung%d" % n, Vector(a) + lift, b + lift, STEP_WIDE, STEP_THICK, flat, step_wood, step_wood, 0.3))
 for obj in parts:
     world = obj.matrix_world.copy()
     obj.parent = ladder
