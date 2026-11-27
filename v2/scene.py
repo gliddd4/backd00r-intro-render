@@ -677,14 +677,13 @@ def build_sky():
     overhead.inputs["Saturation"].default_value = 1.4
     t.links.new(plain, overhead.inputs["Color"])
     overhead = blend(t, 1.0, overhead.outputs["Color"], remap(t, z, 0.1, 0.9, 1.0, 0.8), "MULTIPLY")
-    vivid = new(t, "ShaderNodeHueSaturation")
-    vivid.inputs["Saturation"].default_value = 1.6
-    t.links.new(plain, vivid.inputs["Color"])
+    clearer = new(t, "ShaderNodeHueSaturation")
+    clearer.inputs["Saturation"].default_value = 1.25
+    t.links.new(overhead, clearer.inputs["Color"])
     crisp = new(t, "ShaderNodeGamma")
-    crisp.inputs["Gamma"].default_value = 1.2
-    t.links.new(vivid.outputs["Color"], crisp.inputs["Color"])
-    low = blend(t, 1.0, crisp.outputs["Color"], remap(t, z, 0.0, 0.8, 0.95, 0.74), "MULTIPLY")
-    deep = blend(t, remap(t, z, 0.45, 0.75), low, overhead)
+    crisp.inputs["Gamma"].default_value = 1.1
+    t.links.new(clearer.outputs["Color"], crisp.inputs["Color"])
+    deep = blend(t, remap(t, z, 0.25, 0.5), crisp.outputs["Color"], overhead)
     trails = None
     for normal, width, strength, seed in (((0.31, 0.25, -0.92), 0.0022, 0.85, 1), ((-0.55, 0.12, -0.83), 0.007, 0.4, 5)):
         across = new(t, "ShaderNodeVectorMath", operation="DOT_PRODUCT")
