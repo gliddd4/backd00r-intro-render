@@ -1537,7 +1537,8 @@ def sea_slab(name, mat, ladder_at, low, high, resolution):
 
     base = ladder_at.z - 9.4
     cover = op(group, "MULTIPLY", op(group, "SUBTRACT", billow(0.07, 3, 0.2), 0.47), 9.0)
-    top = op(group, "ADD", base, op(group, "MULTIPLY", puffs(0.2), 2.2))
+    top = op(group, "ADD", base, op(group, "MULTIPLY", puffs(0.045), 5.0))
+    top = op(group, "ADD", top, op(group, "MULTIPLY", puffs(0.2), 2.2))
     top = op(group, "ADD", top, op(group, "MULTIPLY", puffs(0.55), 1.0))
     top = op(group, "ADD", top, cover)
     top = op(group, "ADD", top, op(group, "MULTIPLY", op(group, "SUBTRACT", billow(0.9, 5), 0.5), 2.0))
@@ -1573,10 +1574,10 @@ def build_sea(ladder_at):
     mat.cycles.volume_step_rate = 0.4
     x, y, z = ladder_at
     low, high = z - 12.5, z - 1.2
-    near = sea_slab("sea_near", mat, ladder_at, (x - 34, y - 34, low), (x + 34, y + 40, high), (190, 205, 40))
-    far = sea_slab("sea_far", mat, ladder_at, (x - 190, y + 40, low), (x + 190, y + 330, z - 3.0), (260, 200, 14))
-    left = sea_slab("sea_left", mat, ladder_at, (x - 190, y - 34, low), (x - 34, y + 40, z - 3.0), (104, 52, 14))
-    right = sea_slab("sea_right", mat, ladder_at, (x + 34, y - 34, low), (x + 190, y + 40, z - 3.0), (104, 52, 14))
+    near = sea_slab("sea_near", mat, ladder_at, (x - 70, y - 34, low), (x + 70, y + 200, high), (200, 330, 36))
+    far = sea_slab("sea_far", mat, ladder_at, (x - 190, y + 200, low), (x + 190, y + 330, high), (220, 76, 22))
+    left = sea_slab("sea_left", mat, ladder_at, (x - 190, y - 34, low), (x - 70, y + 200, high), (70, 136, 22))
+    right = sea_slab("sea_right", mat, ladder_at, (x + 70, y - 34, low), (x + 190, y + 200, high), (70, 136, 22))
     deep, t, out = bare("below_clouds")
     place = new(t, "ShaderNodeNewGeometry").outputs["Position"]
     emission = new(t, "ShaderNodeEmission")
