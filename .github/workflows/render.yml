@@ -9,7 +9,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [0, 1]
+        shard: [0, 1, 2, 3, 4]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -33,6 +33,7 @@ jobs:
           RATE: "20"
           HIGH: ""
           SCRIPT: "ladder3d.py"
+          TURN: "15"
         run: python v2/$SCRIPT ${{ matrix.shard }} ${{ strategy.job-total }}
       - uses: actions/upload-artifact@v4
         if: always()

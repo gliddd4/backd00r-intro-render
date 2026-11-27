@@ -1,4 +1,5 @@
 import math
+from mathutils import Euler
 import os
 import sys
 
@@ -113,6 +114,9 @@ bpy.ops.wm.save_as_mainfile(filepath=os.path.join(OUT, "ladder3d.blend"))
 
 shard, shards = (int(v) for v in sys.argv[-2:])
 views = ["cover", "front"]
+TURN = int(os.environ.get("TURN", "0"))
+if TURN:
+    views = ["turn%02d" % k for k in range(TURN)]
 scene.camera.rotation_euler = (math.pi / 2 + math.radians(FIT.get("camera_pitch", 0.0)), 0, 0)
 for k, view in enumerate(views):
     if k % shards != shard:
@@ -133,6 +137,28 @@ for k, view in enumerate(views):
         cam_obj.matrix_world = Matrix.Translation(eye) @ Matrix((right, upv, -fwd)).transposed().to_4x4()
         scene.render.resolution_x, scene.render.resolution_y = 540, 1170
         cam_obj.data.sensor_fit = "VERTICAL"
+        scene.render.film_transparent = False
+    if view.startswith("turn"):
+        cam_obj = scene.camera
+        start = Matrix.Translation(Vector((0, 0, 0))) @ Euler((math.pi / 2 + math.radians(FIT.get("camera_pitch", 0.0)), 0, 0)).to_matrix().to_4x4()
+        zz = Vector((0, 0, 1))
+        fwd = zz.cross(across).normalized()
+        if fwd.dot(normal) > 0:
+            fwd = -fwd
+        right = across if across.dot(foot_r - foot_l) > 0 else -across
+        upv = right.cross(fwd).normalized()
+        if upv.z < 0:
+            upv = -upv
+        eye = (foot_l + foot_r) / 2 - fwd * 2.4 + upv * 1.65
+        end = Matrix.Translation(eye) @ Matrix((right, upv, -fwd)).transposed().to_4x4()
+        f = int(view[4:]) / max(1, TURN - 1)
+        f = f * f * (3 - 2 * f)
+        loc = start.to_translation().lerp(end.to_translation(), f)
+        rot = start.to_quaternion().slerp(end.to_quaternion(), f)
+        cam_obj.matrix_world = Matrix.Translation(loc) @ rot.to_matrix().to_4x4()
+        cam_obj.data.shift_y = (HORIZON - 499) / 1000 * (1 - f)
+        cam_obj.data.sensor_fit = "HORIZONTAL"
+        scene.render.resolution_x, scene.render.resolution_y = 540, 1170
         scene.render.film_transparent = False
     scene.render.filepath = os.path.join(OUT, "ladder3d_%s.png" % view)
     bpy.ops.render.render(write_still=True)
