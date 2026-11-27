@@ -9,7 +9,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [0, 1, 2, 3, 4, 5]
+        shard: [0, 1, 2, 3, 4, 5, 6]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -32,7 +32,8 @@ jobs:
       - env:
           RATE: "20"
           HIGH: ""
-        run: python v2/scene.py ${{ matrix.shard }} ${{ strategy.job-total }}
+          SCRIPT: "ladder_turn.py"
+        run: python v2/$SCRIPT ${{ matrix.shard }} ${{ strategy.job-total }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:
