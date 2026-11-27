@@ -459,7 +459,7 @@ SEAT = Vector((-0.37, -0.35, 1.06))
 
 AHEAD = Vector((-0.37, 20.0, 0.55))
 
-RISE = [(8.6, None, None), (9.4, Vector((-0.2, 0.1, 2.3)), Vector((6.5, 30.0, 4.0))), (10.5, Vector((0.0, 1.2, 6.5)), Vector((8.0, 34.0, 14.0)))]
+RISE = [(8.6, None, None), (9.4, Vector((-0.2, 0.1, 2.3)), Vector((6.5, 30.0, 7.0))), (10.5, Vector((0.0, 1.2, 6.5)), Vector((8.0, 34.0, 22.0)))]
 
 def in_seat(t):
     frame = car_frame(t)
