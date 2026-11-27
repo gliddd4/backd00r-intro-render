@@ -79,8 +79,11 @@ for obj in parts:
     world = obj.matrix_world.copy()
     obj.parent = ladder
     obj.matrix_world = world
+fire_at = flame_at + normal * 0.25 - up * 0.1
+ladder_across, ladder_normal = across.copy(), normal.copy()
 exec(compile(tail, "ladder_tail", "exec"))
-scene.objects["firelight"].location = flame_at + normal * 0.25 - up * 0.1
+scene.objects["firelight"].location = fire_at
+across, normal = ladder_across, ladder_normal
 os.makedirs(OUT, exist_ok=True)
 bpy.ops.wm.save_as_mainfile(filepath=os.path.join(OUT, "ladder3d.blend"))
 
