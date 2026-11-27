@@ -1829,10 +1829,23 @@ def build_porsche():
         if name.startswith("windows_main_windows"):
             mesh.materials.clear()
             mesh.materials.append(pane)
+        elif name.startswith("mirror_middle"):
+            for material in mesh.materials:
+                bsdf = material.node_tree.nodes.get("Principled BSDF")
+                for socket in ("Base Color", "Metallic", "Roughness"):
+                    for link in list(bsdf.inputs[socket].links):
+                        material.node_tree.links.remove(link)
+                bsdf.inputs["Base Color"].default_value = (0.92, 0.92, 0.92, 1)
+                bsdf.inputs["Metallic"].default_value = 1.0
+                bsdf.inputs["Roughness"].default_value = 0.02
         else:
             for material in mesh.materials:
                 if material is not None and material.use_nodes and material.name not in faded:
                     faded.add(material.name)
+                    bsdf = material.node_tree.nodes.get("Principled BSDF")
+                    if bsdf is not None and ("leather" in material.name or "steering" in material.name):
+                        bsdf.inputs["Coat Weight"].default_value = 0.2
+                        bsdf.inputs["Coat Roughness"].default_value = 0.3
                     ghost(material)
         link_object(bpy.data.objects.new(name, mesh), root)
     print("porsche door turned %.1f deg, body size" % opened, [round(float(v), 2) for v in hi - lo], "ground", round(float(ground), 3), flush=True)
@@ -1846,16 +1859,28 @@ def thin_glass(name):
     t.links.new(geometry.outputs["Incoming"], facing.inputs[0])
     t.links.new(geometry.outputs["Normal"], facing.inputs[1])
     grazing = op(t, "POWER", op(t, "SUBTRACT", 1.0, op(t, "ABSOLUTE", facing.outputs["Value"])), 5.0)
-    mirror = op(t, "ADD", 0.04, op(t, "MULTIPLY", grazing, 0.96))
+    mirror = op(t, "MINIMUM", op(t, "MULTIPLY", op(t, "ADD", 0.04, op(t, "MULTIPLY", grazing, 0.96)), 2.0), 1.0)
+    place = new(t, "ShaderNodeNewGeometry").outputs["Position"]
+    smudge = remap(t, grain(t, place, (3.0, 3.0, 3.0), 4, 0.6), 0.45, 0.75)
+    specks = new(t, "ShaderNodeTexVoronoi")
+    specks.inputs["Scale"].default_value = 260
+    t.links.new(place, specks.inputs["Vector"])
+    dust = op(t, "ADD", op(t, "MULTIPLY", smudge, 0.035), op(t, "MULTIPLY", remap(t, specks.outputs["Distance"], 0.03, 0.0), 0.25))
     clear = new(t, "ShaderNodeBsdfTransparent")
     clear.inputs["Color"].default_value = (0.84, 0.9, 0.87, 1)
     shine = new(t, "ShaderNodeBsdfAnisotropic")
-    shine.inputs["Roughness"].default_value = 0.03
+    wire(t, op(t, "ADD", 0.02, op(t, "MULTIPLY", smudge, 0.12)), shine.inputs["Roughness"])
     mix = new(t, "ShaderNodeMixShader")
     t.links.new(mirror, mix.inputs[0])
     t.links.new(clear.outputs[0], mix.inputs[1])
     t.links.new(shine.outputs[0], mix.inputs[2])
-    t.links.new(mix.outputs[0], out.inputs["Surface"])
+    haze = new(t, "ShaderNodeBsdfDiffuse")
+    haze.inputs["Color"].default_value = (0.8, 0.8, 0.78, 1)
+    dirty = new(t, "ShaderNodeMixShader")
+    t.links.new(dust, dirty.inputs[0])
+    t.links.new(mix.outputs[0], dirty.inputs[1])
+    t.links.new(haze.outputs[0], dirty.inputs[2])
+    t.links.new(dirty.outputs[0], out.inputs["Surface"])
     return m
 
 
