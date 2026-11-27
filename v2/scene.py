@@ -2017,7 +2017,7 @@ def main():
     c.samples = 48
     if os.environ.get("HIGH"):
         r.resolution_percentage = 200
-        c.samples = 96
+        c.samples = int(os.environ["HIGH"]) if os.environ["HIGH"].isdigit() and int(os.environ["HIGH"]) > 1 else 96
     if os.environ.get("PREVIEW"):
         r.resolution_percentage = 50
         c.samples = 16
