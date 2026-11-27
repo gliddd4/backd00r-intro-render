@@ -30,7 +30,7 @@ os.makedirs(OUT, exist_ok=True)
 
 FPS = 24
 
-LENGTH = 15.6
+LENGTH = 15.0
 
 FRAMES = int(round(LENGTH * FPS)) + 1
 
@@ -507,14 +507,14 @@ def flight_plan():
     def near(x, y, z):
         return ladder_at + Vector((x, y, z))
 
-    path = [(10.5, start), (11.3, start + Vector((0, 4, 20))), (12.05, start + Vector((0, 16, 45))), (12.85, near(0.9, -23, -2.4)), (13.7, near(0.25, -12.6, 1.35)), (14.4, near(0.2, -8.4, 2.9)), (14.95, near(0.32, -4.6, 3.62)), (15.6, near(0.32, -0.22, 3.66))]
-    look = [(10.5, aim), (11.3, start + Vector((0, 10, 34))), (12.05, start + Vector((0, 22, 59))), (12.85, near(0.2, 0, 0.9)), (13.7, near(0.0, 0, 1.45)), (14.4, near(0.3, 0, 3.3)), (14.95, near(0.32, 0, 3.66)), (15.6, near(0.32, 1, 3.66))]
+    path = [(10.5, start), (11.3, start + Vector((0, 4, 20))), (12.0, start + Vector((0, 10, 40))), (12.6, start + Vector((0, 16, 62))), (13.2, start + Vector((0, 24, 86))), (13.7, start + Vector((0, 32, 93))), (14.3, start + Vector((0, 46, 97))), (15.0, start + Vector((0, 64, 99)))]
+    look = [(10.5, aim), (11.3, start + Vector((0, 10, 34))), (12.0, start + Vector((0, 17, 60))), (12.6, start + Vector((0, 22, 86))), (13.2, start + Vector((0, 30, 114))), (13.7, start + Vector((0, 40, 122))), (14.3, start + Vector((0, 76, 100))), (15.0, start + Vector((0, 90, 86.9)))]
     return start, ladder_at, (path, slopes(path, velocity)), (look, slopes(look, turn))
 
 START, LADDER_AT, PATH, LOOK = flight_plan()
 
 def lens_at(t):
-    keys = [(8.6, 24), (10.5, 24), (12.0, 23), (13.2, 33), (14.2, 33), (15.0, 30), (15.6, 28)]
+    keys = [(8.6, 24), (15.0, 24)]
     for (a, p), (b, q) in zip(keys, keys[1:]):
         if t <= b:
             return p + (q - p) * smooth((t - a) / (b - a))
@@ -1608,8 +1608,8 @@ def build_clouds(base, ladder_at):
         size = rnd.uniform(3.5, 6.5)
         if min((loc - p).length for p in route) > size * 1.5 + 1.5:
             layer.append(add(loc, size, 0.8))
-    layer.append(add(hermite(PATH[0], PATH[1], 11.6), 9.0, 0.9))
-    return layer, build_sea(ladder_at)
+    tower = add(base + Vector((0, 16, 62)), 24.0)
+    return layer, tower, build_sea(ladder_at)
 
 
 def build_flame(parent, location):
@@ -2199,7 +2199,7 @@ def main():
     traffic = build_traffic()
     car = build_porsche()
     ground_set = [obj for obj in scene.collection.objects if obj not in before]
-    layer, sea = build_clouds(START, LADDER_AT)
+    layer, tower, sea = build_clouds(START, LADDER_AT)
     embers = build_flame(ladder_root, (0.0, 9.76, 2.78))
     fire = lamp("firelight", "POINT", (255, 120, 40), 6.0, ladder_root, (-0.05, 9.5, 2.7), shadow_soft_size=0.15)
     build_ladder(ladder_root)
@@ -2276,9 +2276,9 @@ def main():
         if "pivot" in STEER:
             angle = max(-2.4, min(2.4, 15 * 2.45 * bend))
             STEER["pivot"].rotation_euler = Matrix.Rotation(-angle, 4, STEER["axis"]).to_euler()
-        high = span(t, 10.9, 11.7)
+        high = span(t, 12.3, 12.9)
         NIGHT[1].outputs[0].default_value = high
-        clear = t >= 11.35
+        clear = t >= 12.6
         bloom = scene.node_tree.nodes["Glare"]
         for name, value in (("Threshold", 1.4 if clear else 3.5), ("Strength", 0.35 if clear else 0.22)):
             if name in bloom.inputs:
@@ -2302,23 +2302,24 @@ def main():
         sun.rotation_euler = (-direction).to_track_quat("-Z", "Y").to_euler()
         fire.data.energy = 6 * (0.85 + 0.15 * math.sin(t * 31) * math.sin(t * 17))
         for obj in sky_set:
-            obj.hide_render = t < 11.2
+            obj.hide_render = True
         for obj in ground_set:
             obj.hide_render = t >= 11.6
         for obj in layer:
             obj.hide_render = t > 12.7
         for obj in sea:
             obj.hide_render = t < 11.2
+        tower.hide_render = t < 11.0
         sea[-1].hide_render = t < 11.2 or pos.z < LADDER_AT.z - 12.4
         for ember, origin, phase, side, depth, reach in embers:
             age = (phase + t * 0.55) % 1.0
             ember.location = origin + Vector((side * age + 0.07 * math.sin(age * 17 + phase * 40), depth * age, 0.15 + reach * age))
-            ember.hide_render = t < 11.2 or age > 0.9
+            ember.hide_render = True
 
     shard, shards = (int(a) for a in sys.argv[-2:])
     listed = os.path.join(HERE, "frames.txt")
     wanted = open(listed).read().strip() if os.path.exists(listed) else "all"
-    frames = list(range(FRAMES)) if wanted == "all" else [int(v) for v in wanted.split(",")]
+    frames = list(range(int(round(LENGTH * rate)) + 1)) if wanted == "all" else [int(v) for v in wanted.split(",")]
     def place(t, outside):
         pose(t)
         if outside:
