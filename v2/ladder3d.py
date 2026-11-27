@@ -5,7 +5,9 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 source = open(os.path.join(HERE, "ladder.py")).read()
 source = source.replace("for size, low, high, tone, amount in ((34, 0.57, 0.64, (0.80, 0.66, 0.52, 1), 0.95), ", "for size, low, high, tone, amount in (")
-source = source.replace("fade_in.inputs[\"To Max\"].default_value = 0.85", "fade_in.inputs[\"To Max\"].default_value = 0.0")
+source = source.replace("fade_in.inputs[\"To Max\"].default_value = 0.85", "fade_in.inputs[\"To Max\"].default_value = 0.6")
+source = source.replace("worn.inputs[2].default_value = (0.58, 0.42, 0.30, 1)", "worn.inputs[2].default_value = (0.80, 0.70, 0.60, 1)")
+source = source.replace("(0.46, (172, 104, 70)), (0.57, (206, 138, 98))", "(0.46, (172, 114, 76)), (0.57, (210, 156, 112))")
 head = source[:source.index('rail("left",')]
 tail = source[source.index("glow = bpy.data.lights.new"):source.index('scene.render.filepath = os.path.join(OUT, "ladder.png")')]
 exec(compile(head, "ladder_head", "exec"))
