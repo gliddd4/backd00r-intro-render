@@ -4,6 +4,7 @@ import random
 import sys
 import time
 
+import bmesh
 import bpy
 from mathutils import Matrix, Vector, noise
 
@@ -1162,6 +1163,32 @@ def build_road():
         y0 = marks.uniform(-40, 1400)
         base, phase, size = marks.uniform(-8.0, 6.8), marks.uniform(0, 6.3), marks.uniform(3.0, 14.0)
         ribbon("crack", lambda y, b=base, p=phase: b + 0.35 * math.sin(y * 0.9 + p) + 0.15 * math.sin(y * 2.3 + p * 2), 0.03, y0, y0 + size, 0.004, sealant, 0.5)
+    concrete = surface("bridge_concrete", (150, 147, 140), 0.88)
+    shade = surface("bridge_underside", (92, 90, 86), 0.9)
+
+    def arc(f):
+        a = math.radians(-58 + 116 * f)
+        return Vector((-60 + 420 * math.sin(a), 980 - 420 * math.cos(a) + 340 * f, 0))
+
+    sections, rails_l, rails_r = [], [], []
+    for i in range(121):
+        f = i / 120
+        c = arc(f)
+        ahead = (arc(min(1, f + 0.01)) - arc(max(0, f - 0.01))).normalized()
+        side = Vector((ahead.y, -ahead.x, 0))
+        z = 11.5 + 2.5 * math.sin(math.pi * f)
+        bank = 0.35 * math.sin(math.pi * f)
+        w = 6.5
+        sections.append([c + side * -w + Vector((0, 0, z - 1.5)), c + side * w + Vector((0, 0, z - 1.5 + bank * 0.3)), c + side * w + Vector((0, 0, z + bank * 0.3)), c + side * -w + Vector((0, 0, z))])
+        rails_l.append([c + side * -w + Vector((0, 0, z)), c + side * -(w - 0.35) + Vector((0, 0, z)), c + side * -(w - 0.35) + Vector((0, 0, z + 1.05)), c + side * -w + Vector((0, 0, z + 1.05))])
+        rails_r.append([c + side * (w - 0.35) + Vector((0, 0, z + bank * 0.3)), c + side * w + Vector((0, 0, z + bank * 0.3)), c + side * w + Vector((0, 0, z + 1.05 + bank * 0.3)), c + side * (w - 0.35) + Vector((0, 0, z + 1.05 + bank * 0.3))])
+        if i % 8 == 4:
+            for off in (-3.2, 3.2):
+                foot = c + side * off
+                tube("pier", [(foot.x, foot.y, -0.5), (foot.x, foot.y, z - 1.4)], 0.9, shade)
+    loft("flyover", sections, concrete, bevel=0.08)
+    loft("flyover_wall_l", rails_l, concrete)
+    loft("flyover_wall_r", rails_r, concrete)
     for _ in range(30):
         x0, y0 = marks.uniform(-8.0, 4.5), marks.uniform(-40, 1400)
         sheet("patch", x0, x0 + marks.uniform(0.8, 2.6), y0, y0 + marks.uniform(1.0, 4.0), 0.0025, patch)
@@ -2021,8 +2048,109 @@ def build_porsche():
                     weather(material)
                     ghost(material)
         link_object(bpy.data.objects.new(name, mesh), root)
+    steer_wheel(root, parts)
+    hang_freshener(root, parts)
     print("porsche door turned %.1f deg, body size" % opened, [round(float(v), 2) for v in hi - lo], "ground", round(float(ground), 3), flush=True)
     return root
+
+
+STEER = {}
+
+
+def leather_wheel():
+    m = surface("wheel_leather", (24, 22, 21), 0.5, coat=0.15)
+    t = m.node_tree
+    bsdf = t.nodes["Principled BSDF"]
+    place = new(t, "ShaderNodeTexCoord").outputs["Object"]
+    pores = new(t, "ShaderNodeTexVoronoi")
+    pores.inputs["Scale"].default_value = 900
+    t.links.new(place, pores.inputs["Vector"])
+    shine = remap(t, grain(t, place, (40.0, 40.0, 40.0), 4, 0.6), 0.35, 0.75)
+    wire(t, op(t, "ADD", 0.38, op(t, "MULTIPLY", shine, 0.25)), bsdf.inputs["Roughness"])
+    bump = new(t, "ShaderNodeBump")
+    bump.inputs["Strength"].default_value = 0.25
+    bump.inputs["Distance"].default_value = 0.0008
+    t.links.new(pores.outputs["Distance"], bump.inputs["Height"])
+    t.links.new(bump.outputs["Normal"], bsdf.inputs["Normal"])
+    ghost(m)
+    return m
+
+
+def steer_wheel(root, parts):
+    signs = next((mesh for name, mesh in parts if name.startswith("steering_wheel_signs")), None)
+    if signs is None:
+        return
+    pts = points(signs)
+    hub = pts.mean(0)
+    axis = np.linalg.eigh(np.cov((pts - hub).T))[1][:, 0]
+    if axis @ (np.array(SEAT[:]) - hub) < 0:
+        axis = -axis
+    wheel_mat = leather_wheel()
+    pieces = []
+    for name, mesh in parts:
+        if any(name.startswith(prefix) for prefix in HIDDEN) or name.startswith("windows_main") or name.startswith("body"):
+            continue
+        co = points(mesh)
+        rel = co - hub
+        along = rel @ axis
+        radial = np.linalg.norm(rel - np.outer(along, axis), axis=1)
+        label = islands(mesh)
+        inside = (radial < 0.215) & (np.abs(along) < 0.09)
+        take = np.zeros(len(co), bool)
+        for part in np.unique(label[inside]):
+            pick = label == part
+            if inside[pick].all():
+                take |= pick
+        if not take.any():
+            continue
+        for keep_wheel in (True, False):
+            target = mesh.copy() if keep_wheel else mesh
+            bm = bmesh.new()
+            bm.from_mesh(target)
+            bm.verts.ensure_lookup_table()
+            drop = [v for v in bm.verts if take[v.index] != keep_wheel]
+            bmesh.ops.delete(bm, geom=drop, context="VERTS")
+            bm.to_mesh(target)
+            bm.free()
+            if keep_wheel:
+                for i, material in enumerate(target.materials):
+                    if material is not None and ("leather" in material.name or "plastic_all_bl" in material.name):
+                        target.materials[i] = wheel_mat
+                pieces.append(target)
+    if not pieces:
+        return
+    pivot = empty("steering_pivot", root)
+    pivot.location = Vector(hub.tolist())
+    for mesh in pieces:
+        mesh.transform(Matrix.Translation(Vector((-hub).tolist())))
+        link_object(bpy.data.objects.new("steering_part", mesh), pivot)
+    STEER["pivot"] = pivot
+    STEER["axis"] = Vector(axis.tolist())
+    print("steering wheel parts", len(pieces), "hub", [round(float(v), 3) for v in hub], flush=True)
+
+
+def hang_freshener(root, parts):
+    mirror = next((mesh for name, mesh in parts if name.startswith("mirror_middle")), None)
+    if mirror is None:
+        return
+    pts = points(mirror)
+    top = Vector((float(pts[:, 0].mean()), float(pts[:, 1].mean()), float(pts[:, 2].min()) - 0.01))
+    hook = empty("freshener_pivot", root)
+    hook.location = top
+    string = surface("freshener_string", (200, 196, 186), 0.8)
+    card = surface("freshener_card", (18, 52, 34), 0.75)
+    gold = surface("freshener_print", (214, 176, 96), 0.4, 0.6)
+    for m in (string, card, gold):
+        ghost(m)
+    tube("freshener_string", [(0, 0, 0), (0, 0, -0.085)], 0.0008, string, hook)
+    box("freshener_card", (0.075, 0.003, 0.1), (0, 0, -0.14), card, hook, bevel=0.004)
+    sym = empty("freshener_symbol", hook)
+    sym.location = (0, -0.002, -0.13)
+    ring = [(0.016 * math.cos(a / 16 * math.tau), 0, 0.016 * math.sin(a / 16 * math.tau)) for a in range(17)]
+    tube("venus_ring", ring, 0.0022, gold, sym)
+    tube("venus_stem", [(0, 0, -0.016), (0, 0, -0.04)], 0.0022, gold, sym)
+    tube("venus_bar", [(-0.011, 0, -0.03), (0.011, 0, -0.03)], 0.0022, gold, sym)
+    STEER["freshener"] = hook
 
 
 def thin_glass(name):
@@ -2148,7 +2276,7 @@ def main():
     c.volume_max_steps = 384
     c.sample_clamp_indirect = 6.0
     finish()
-    moving = [cam, car, hinge]
+    moving = [cam, car, hinge] + [STEER[k] for k in ("pivot", "freshener") if k in STEER]
     previous = {}
 
     def turn(obj, quaternion):
@@ -2168,6 +2296,14 @@ def main():
             for hub, r in wheels:
                 hub.rotation_euler = (-abs(speed) * t / r, 0, 0)
         turn(car, frame.to_quaternion())
+        y_now = frame.translation.y
+        bend = (car_x(y_now + 2.0) - 2 * car_x(y_now) + car_x(y_now - 2.0)) / 4.0
+        if "pivot" in STEER:
+            angle = max(-2.4, min(2.4, 15 * 2.45 * bend))
+            STEER["pivot"].rotation_euler = Matrix.Rotation(-angle, 4, STEER["axis"]).to_euler()
+        if "freshener" in STEER:
+            swing = max(-0.6, min(0.6, -0.0045 * speed(t) ** 2 * bend * 20)) + 0.06 * math.sin(t * 4.1) + 0.03 * math.sin(t * 9.3)
+            STEER["freshener"].rotation_euler = (0.04 * math.sin(t * 3.3), swing, 0)
         high = span(t, 10.9, 11.7)
         NIGHT[1].outputs[0].default_value = high
         clear = t >= 11.35
