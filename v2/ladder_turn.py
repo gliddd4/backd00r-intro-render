@@ -13,7 +13,7 @@ foot = (at(543, 732) + at(640, 735)) / 2
 top, bottom = at(410, 282), at(543, 732)
 lean = math.atan2(-(top - bottom).x, (top - bottom).z)
 near, far = at(433, 348, D - 0.5), at(526, 337.5, D - 0.14)
-turn = -math.atan2(far.y - near.y, far.x - near.x)
+turn = math.atan2(far.y - near.y, far.x - near.x)
 
 pivot = bpy.data.objects.new("pivot", None)
 scene.collection.objects.link(pivot)
