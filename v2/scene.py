@@ -473,7 +473,7 @@ SEAT = Vector((-0.37, -0.35, 1.06))
 
 AHEAD = Vector((-0.37, 20.0, 0.55))
 
-RISE = [(8.6, None, None), (9.4, Vector((-0.2, 0.1, 2.3)), Vector((3.0, 22.0, 14.3))), (10.5, Vector((0.0, 1.2, 6.5)), Vector((1.0, 13.2, 27.5)))]
+RISE = [(8.6, None, None), (9.4, Vector((-0.2, 0.1, 2.3)), Vector((3.0, 22.0, 14.3))), (10.5, Vector((0.0, 1.2, 10.0)), Vector((1.0, 13.2, 31.0)))]
 
 def in_seat(t):
     frame = car_frame(t)
@@ -506,7 +506,7 @@ def flight_plan():
     def near(x, y, z):
         return ladder_at + Vector((x, y, z))
 
-    path = [(10.5, start), (11.3, start + Vector((0, 4, 13))), (12.05, start + Vector((0, 16, 32))), (12.85, near(0.9, -23, -2.4)), (13.7, near(0.25, -12.6, 1.35)), (14.4, near(0.2, -8.4, 2.9)), (14.95, near(0.32, -4.6, 3.62)), (15.6, near(0.32, -0.22, 3.66))]
+    path = [(10.5, start), (11.3, start + Vector((0, 4, 20))), (12.05, start + Vector((0, 16, 45))), (12.85, near(0.9, -23, -2.4)), (13.7, near(0.25, -12.6, 1.35)), (14.4, near(0.2, -8.4, 2.9)), (14.95, near(0.32, -4.6, 3.62)), (15.6, near(0.32, -0.22, 3.66))]
     look = [(10.5, aim), (11.3, start + Vector((0, 13, 21))), (12.05, start + Vector((0, 34, 40))), (12.85, near(0.2, 0, 0.9)), (13.7, near(0.0, 0, 1.45)), (14.4, near(0.3, 0, 3.3)), (14.95, near(0.32, 0, 3.66)), (15.6, near(0.32, 1, 3.66))]
     return start, ladder_at, (path, slopes(path, velocity)), (look, slopes(look, turn))
 
@@ -1538,6 +1538,7 @@ def build_clouds(base, ladder_at):
         size = rnd.uniform(3.5, 6.5)
         if min((loc - p).length for p in route) > size * 1.5 + 1.5:
             layer.append(add(loc, size, 0.8))
+    layer.append(add(hermite(PATH[0], PATH[1], 11.6), 9.0, 0.9))
     return layer, build_sea(ladder_at)
 
 
@@ -2152,7 +2153,7 @@ def main():
         for obj in ground_set:
             obj.hide_render = t >= 11.6
         for obj in layer:
-            obj.hide_render = t < 7.8 or t > 12.7
+            obj.hide_render = t > 12.7
         for obj in sea:
             obj.hide_render = t < 11.2
         sea[-1].hide_render = t < 11.2 or pos.z < LADDER_AT.z - 12.4
