@@ -32,7 +32,7 @@ jobs:
       - env:
           RATE: "5"
           HIGH: ""
-          SCRIPT: "scene.py"
+          SCRIPT: "ladder3d.py"
           TURN: "0"
         run: python v2/$SCRIPT ${{ matrix.shard }} ${{ strategy.job-total }}
       - uses: actions/upload-artifact@v4
