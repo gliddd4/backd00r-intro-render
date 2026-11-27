@@ -2049,7 +2049,6 @@ def build_porsche():
                     ghost(material)
         link_object(bpy.data.objects.new(name, mesh), root)
     steer_wheel(root, parts)
-    hang_freshener(root, parts)
     print("porsche door turned %.1f deg, body size" % opened, [round(float(v), 2) for v in hi - lo], "ground", round(float(ground), 3), flush=True)
     return root
 
@@ -2127,26 +2126,6 @@ def steer_wheel(root, parts):
     STEER["pivot"] = pivot
     STEER["axis"] = Vector(axis.tolist())
     print("steering wheel parts", len(pieces), "hub", [round(float(v), 3) for v in hub], flush=True)
-
-
-def hang_freshener(root, parts):
-    top = Vector((0.06, 0.29, 1.1))
-    hook = empty("freshener_pivot", root)
-    hook.location = top
-    string = surface("freshener_string", (200, 196, 186), 0.8)
-    card = surface("freshener_card", (18, 52, 34), 0.75)
-    gold = surface("freshener_print", (214, 176, 96), 0.4, 0.6)
-    for m in (string, card, gold):
-        ghost(m)
-    tube("freshener_string", [(0, 0, 0), (0, 0, -0.1)], 0.0008, string, hook)
-    box("freshener_card", (0.075, 0.003, 0.1), (0, 0, -0.155), card, hook, bevel=0.004)
-    sym = empty("freshener_symbol", hook)
-    sym.location = (0, -0.002, -0.145)
-    ring = [(0.016 * math.cos(a / 16 * math.tau), 0, 0.016 * math.sin(a / 16 * math.tau)) for a in range(17)]
-    tube("venus_ring", ring, 0.0022, gold, sym)
-    tube("venus_stem", [(0, 0, -0.016), (0, 0, -0.04)], 0.0022, gold, sym)
-    tube("venus_bar", [(-0.011, 0, -0.03), (0.011, 0, -0.03)], 0.0022, gold, sym)
-    STEER["freshener"] = hook
 
 
 def thin_glass(name):
@@ -2272,7 +2251,7 @@ def main():
     c.volume_max_steps = 384
     c.sample_clamp_indirect = 6.0
     finish()
-    moving = [cam, car, hinge] + [STEER[k] for k in ("pivot", "freshener") if k in STEER]
+    moving = [cam, car, hinge] + [STEER[k] for k in ("pivot",) if k in STEER]
     previous = {}
 
     def turn(obj, quaternion):
@@ -2297,9 +2276,6 @@ def main():
         if "pivot" in STEER:
             angle = max(-2.4, min(2.4, 15 * 2.45 * bend))
             STEER["pivot"].rotation_euler = Matrix.Rotation(-angle, 4, STEER["axis"]).to_euler()
-        if "freshener" in STEER:
-            swing = max(-0.6, min(0.6, -0.0045 * speed(t) ** 2 * bend * 20)) + 0.06 * math.sin(t * 4.1) + 0.03 * math.sin(t * 9.3)
-            STEER["freshener"].rotation_euler = (0.04 * math.sin(t * 3.3), swing, 0)
         high = span(t, 10.9, 11.7)
         NIGHT[1].outputs[0].default_value = high
         clear = t >= 11.35
