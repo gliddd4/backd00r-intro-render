@@ -699,7 +699,7 @@ def build_sky():
     t.links.new(clearer.outputs["Color"], crisp.inputs["Color"])
     deep = blend(t, remap(t, z, 0.25, 0.5), crisp.outputs["Color"], overhead)
     trails = None
-    for normal, width, strength, seed in (((0.31, 0.25, -0.92), 0.0022, 0.85, 1), ((-0.55, 0.12, -0.83), 0.007, 0.4, 5)):
+    for normal, width, strength, seed in (((0.31, 0.25, -0.92), 0.0022, 0.55, 1), ((-0.55, 0.12, -0.83), 0.007, 0.28, 5)):
         across = new(t, "ShaderNodeVectorMath", operation="DOT_PRODUCT")
         t.links.new(aim.outputs["Vector"], across.inputs[0])
         across.inputs[1].default_value = tuple(Vector(normal).normalized())
@@ -708,7 +708,7 @@ def build_sky():
         trail = op(t, "MULTIPLY", op(t, "MULTIPLY", line, pieces), strength)
         trails = trail if trails is None else op(t, "ADD", trails, trail)
     trails = op(t, "MULTIPLY", trails, remap(t, z, 0.12, 0.3))
-    deep = blend(t, op(t, "MINIMUM", trails, 1.0), deep, lin((255, 255, 255), 1.3))
+    deep = blend(t, op(t, "MINIMUM", trails, 1.0), deep, lin((232, 236, 244), 0.7))
     dusk = blend(t, new(t, "ShaderNodeLightPath").outputs["Is Camera Ray"], plain, deep)
     up = op(t, "ADD", op(t, "MULTIPLY", z, 0.5), 0.5)
     high = gradient(t, up, [(0.40, (96, 140, 190)), (0.495, (170, 208, 224)), (0.52, (132, 192, 224)), (0.57, (82, 148, 207)), (0.65, (40, 96, 170)), (0.80, (18, 46, 104)), (1.0, (6, 16, 46))])
@@ -1089,8 +1089,8 @@ def build_forest():
                 span_of(palms + broad + saws, x, y + rnd.uniform(0, 5), 1.0, 4.5)
                 span_of(tufts, rnd.uniform(8.0, gap), y + rnd.uniform(0, 5), 0.2, 0.5)
         y += 5.0
-    for _ in range(900):
-        x, y = rnd.uniform(-130, 130), rnd.uniform(430, 760)
+    for _ in range(4200):
+        x, y = rnd.uniform(-160, 160), rnd.uniform(430, 3400)
         if -50 < x < 16 or abs(x - exit_center(y)) < 14:
             continue
         span_of(pines + pines + broad, x, y, 9.0, 20.0)
@@ -1122,26 +1122,26 @@ def build_road():
             y += step
         planar_uv(loft(name, sections, mat, closed=False, caps=False))
 
-    sheet("ground", -900, 900, -300, 1500, -0.05, grass)
-    sheet("road", -8.4, 7.2, -60, 900, 0, asphalt)
-    ribbon("ramp", exit_center, 3.4, 128, 460, 0.004, asphalt, 2.0)
-    ribbon("ramp_left", lambda y: exit_center(y) - 2.4, 0.08, 172, 460, 0.012, yellow, 2.0)
-    ribbon("ramp_right", lambda y: exit_center(y) + 2.4, 0.08, 150, 460, 0.012, white, 2.0)
-    ribbon("median_line", lambda y: -5.6, 0.09, -60, 900, 0.012, yellow, 20)
+    sheet("ground", -1500, 1500, -300, 5000, -0.05, grass)
+    sheet("road", -8.4, 7.2, -60, 4200, 0, asphalt)
+    ribbon("ramp", exit_center, 3.4, 128, 2600, 0.004, asphalt, 2.0)
+    ribbon("ramp_left", lambda y: exit_center(y) - 2.4, 0.08, 172, 2600, 0.012, yellow, 2.0)
+    ribbon("ramp_right", lambda y: exit_center(y) + 2.4, 0.08, 150, 2600, 0.012, white, 2.0)
+    ribbon("median_line", lambda y: -5.6, 0.09, -60, 4200, 0.012, yellow, 20)
     ribbon("edge_a", lambda y: 5.5, 0.09, -60, 144, 0.012, white, 12)
-    ribbon("edge_b", lambda y: 5.5, 0.09, 192, 900, 0.012, white, 59)
+    ribbon("edge_b", lambda y: 5.5, 0.09, 192, 4200, 0.012, white, 59)
     y = -50.0
     index = 0
-    while y < 560:
+    while y < 3200:
         for x in (-1.8, 1.8):
             ribbon("dash", lambda _, x=x: x, 0.075, y, y + 3.0, 0.012, white)
             box("marker", (0.1, 0.1, 0.018), (x, y + 6.5, 0.012), reflector, bevel=0.006)
         y += 12.0
-    sheet("road_far", -41.6, -26.0, -60, 900, 0, asphalt)
-    ribbon("far_median_line", lambda y: -28.8, 0.09, -60, 900, 0.012, yellow, 20)
-    ribbon("far_edge", lambda y: -39.4, 0.09, -60, 900, 0.012, white, 20)
+    sheet("road_far", -41.6, -26.0, -60, 4200, 0, asphalt)
+    ribbon("far_median_line", lambda y: -28.8, 0.09, -60, 4200, 0.012, yellow, 20)
+    ribbon("far_edge", lambda y: -39.4, 0.09, -60, 4200, 0.012, white, 20)
     y = -50.0
-    while y < 700:
+    while y < 3200:
         for x in (-32.3, -35.9):
             ribbon("far_dash", lambda _, x=x: x, 0.075, y, y + 3.0, 0.012, white)
         y += 12.0
@@ -1154,12 +1154,12 @@ def build_road():
             y += 0.55
     pole_steel = surface("pole_steel", (170, 172, 170), 0.45, 0.9)
     lamp_head = surface("lamp_head", (120, 122, 120), 0.5, 0.6)
-    for y in range(-20, 560, 64):
+    for y in range(-20, 2600, 64):
         x = 9.6 if y < 120 else exit_center(y) + 6.5
         tube("pole", [(x, y, 0), (x, y, 11.5)], 0.11, pole_steel, radii=[1.0, 0.7])
         tube("arm", [(x, y, 11.2), (x - 1.2, y, 11.9), (x - 2.6, y, 12.05)], 0.05, pole_steel)
         box("lamp_head", (0.75, 0.32, 0.16), (x - 2.9, y, 12.0), lamp_head, bevel=0.05)
-    for side, a, b in ((lambda y: -23.6, -60, 700), (lambda y: exit_center(y) + 4.4, 128, 360)):
+    for side, a, b in ((lambda y: -23.6, -60, 3200), (lambda y: exit_center(y) + 4.4, 128, 2600)):
         sections = []
         for y in range(a, b + 1, 3):
             x = side(y)
