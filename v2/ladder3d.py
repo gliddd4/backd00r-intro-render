@@ -1,5 +1,4 @@
 import math
-from mathutils import Euler
 import os
 import sys
 
@@ -112,6 +111,7 @@ across, normal = ladder_across, ladder_normal
 os.makedirs(OUT, exist_ok=True)
 bpy.ops.wm.save_as_mainfile(filepath=os.path.join(OUT, "ladder3d.blend"))
 
+from mathutils import Euler
 shard, shards = (int(v) for v in sys.argv[-2:])
 views = ["cover", "front"]
 TURN = int(os.environ.get("TURN", "0"))
