@@ -8,38 +8,16 @@ head = source[:source.index('rail("left",')]
 tail = source[source.index("glow = bpy.data.lights.new"):source.index('scene.render.filepath = os.path.join(OUT, "ladder.png")')]
 exec(compile(head, "ladder_head", "exec"))
 
-LEFT = [(410, 282), (414, 290), (426, 335), (436.7, 377), (449, 420), (471.7, 480), (484, 530), (493, 560), (510, 600), (518.3, 640), (528, 670), (536, 700), (543, 732)]
-RIGHT = [(488, 272.5), (498, 307), (502, 322), (512, 368), (522, 397), (531, 420), (548, 460), (560, 490), (573, 530), (586, 562), (597, 600), (608, 640), (618, 670), (629, 700), (640, 735)]
-TOPS = [[(433, 348), (526, 337.5)], [(455, 398.5), (547.5, 390)], [(475, 462.5), (570.5, 453)], [(498, 525.5), (592.5, 517)], [(527.5, 613.5), (624.5, 602)], [(550, 693.5), (650.5, 682.5)]]
-FIT = (7.0141, -1.0312, 7.1155, -1.0172)
-
-
-def u_at(rail, v):
-    for (u0, v0), (u1, v1) in zip(rail, rail[1:]):
-        if v <= v1:
-            return u0 + (u1 - u0) * (v - v0) / (v1 - v0)
-    return rail[-1][0]
-
-
-def rail_point(rail, a, b, v):
-    return at(u_at(rail, v), v, a + b * (v - 500) / 250)
-
-
-def left_at(v):
-    return rail_point(LEFT, FIT[0], FIT[1], v)
-
-
-def right_at(v):
-    return rail_point(RIGHT, FIT[2], FIT[3], v)
-
-
-foot_l, foot_r = left_at(732), right_at(735)
-top_l, top_r = left_at(282), right_at(272.5)
+import json
+FIT = json.load(open(os.path.join(HERE, "ladder3d.json")))
+foot_l, top_l = Vector(FIT["rails"][0][0]), Vector(FIT["rails"][0][1])
+foot_r, top_r = Vector(FIT["rails"][1][0]), Vector(FIT["rails"][1][1])
+flame_at = Vector(FIT["top_left"])
 up = ((top_l - foot_l) + (top_r - foot_r)).normalized()
-across = (foot_r - foot_l)
+across = foot_r - foot_l
 across = (across - up * across.dot(up)).normalized()
 normal = across.cross(up).normalized()
-if normal.dot(Vector((0, 0, 0)) - foot_l) < 0:
+if normal.dot(-foot_l) < 0:
     normal = -normal
 
 
@@ -90,21 +68,19 @@ def beam(name, start, end, width, depth, side, material, edge, rough=1.0):
 ladder = bpy.data.objects.new("ladder3d", None)
 scene.collection.objects.link(ladder)
 rail_len = (top_l - foot_l).length
+burn = (flame_at - foot_l).length - 0.45
 parts = [
-    beam("left", foot_l - up * 0.05, top_l + up * 0.02, 0.11, 0.09, normal, wood("l", 1, char_from=rail_len - 0.55, tint=0.82), wood("le", 11, char_from=rail_len - 0.55, tint=2.15)),
-    beam("right", foot_r - up * 0.05, top_r + up * 0.02, 0.11, 0.09, normal, wood("r", 2, char_from=rail_len + 0.4, tint=0.82), wood("re", 12, char_from=rail_len + 0.4, tint=2.15)),
+    beam("left", foot_l, top_l, 0.11, 0.09, normal, wood("l", 1, char_from=burn, tint=0.82), wood("le", 11, char_from=burn, tint=2.15)),
+    beam("right", foot_r, top_r, 0.11, 0.09, normal, wood("r", 2, char_from=rail_len + 0.4, tint=0.82), wood("re", 12, char_from=rail_len + 0.4, tint=2.15)),
 ]
-for n, (a, b) in enumerate(TOPS):
-    l, r = left_at(a[1]), right_at(b[1])
-    span = (r - l).normalized()
-    drop = -up * 0.04
-    parts.append(beam("rung%d" % n, l - span * 0.07 + drop, r + span * 0.02 + drop, 0.085, 0.055, up, wood("g%d" % n, 3 + n, char_from=None, tint=1.38), dark, 0.8))
+for n, (a, b) in enumerate(FIT["rungs"]):
+    parts.append(beam("rung%d" % n, Vector(a), Vector(b), 0.085, 0.055, up, wood("g%d" % n, 3 + n, char_from=None, tint=1.38), dark, 0.8))
 for obj in parts:
     world = obj.matrix_world.copy()
     obj.parent = ladder
     obj.matrix_world = world
 exec(compile(tail, "ladder_tail", "exec"))
-scene.objects["firelight"].location = top_l + normal * 0.25 - up * 0.1
+scene.objects["firelight"].location = flame_at + normal * 0.25 - up * 0.1
 os.makedirs(OUT, exist_ok=True)
 bpy.ops.wm.save_as_mainfile(filepath=os.path.join(OUT, "ladder3d.blend"))
 
@@ -114,15 +90,21 @@ for k, view in enumerate(views):
     if k % shards != shard:
         continue
     if view == "front":
-        level = Vector((normal.x, normal.y, 0)).normalized()
+        zz = Vector((0, 0, 1))
+        fwd = zz.cross(across).normalized()
         foot = (foot_l + foot_r) / 2
-        eye = foot + level * 2.4 + Vector((0, 0, 1.65))
-        target = foot + up * 1.6
-        look = Vector((target.x - eye.x, target.y - eye.y, 0)).normalized()
+        if fwd.dot(normal) > 0:
+            fwd = -fwd
+        right = across if across.dot(foot_r - foot_l) > 0 else -across
+        upv = right.cross(fwd).normalized()
+        if upv.z < 0:
+            upv = -upv
+        eye = foot - fwd * 2.4 + upv * 1.65
         cam_obj = scene.camera
         cam_obj.data.shift_y = 0
-        cam_obj.location = eye
-        cam_obj.rotation_euler = look.to_track_quat("-Z", "Y").to_euler()
+        cam_obj.matrix_world = Matrix.Translation(eye) @ Matrix((right, upv, -fwd)).transposed().to_4x4()
+        scene.render.resolution_x, scene.render.resolution_y = 540, 1170
+        cam_obj.data.sensor_fit = "VERTICAL"
         scene.render.film_transparent = False
     scene.render.filepath = os.path.join(OUT, "ladder3d_%s.png" % view)
     bpy.ops.render.render(write_still=True)
