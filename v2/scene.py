@@ -970,10 +970,10 @@ def plant(kind, location, size, turn, tilt=0.0):
         obj.matrix_world = place @ local
 
 
-def lawn_carpet(name, x0, x1, y0, y1, density, kinds, low, high, seed):
-    source = bpy.data.collections.get("grass_sources")
+def lawn_carpet(name, x0, x1, y0, y1, density, kinds, low, high, seed, pool="grass_sources"):
+    source = bpy.data.collections.get(pool)
     if source is None:
-        source = bpy.data.collections.new("grass_sources")
+        source = bpy.data.collections.new(pool)
         for i, (parts, height) in enumerate(kinds):
             for mesh, matrix in parts:
                 baked = mesh.copy()
@@ -1065,7 +1065,7 @@ def build_forest():
             span_of(saws, edge + side * rnd.uniform(0.4, 5.0), y + rnd.uniform(0, step), 0.8, 1.7)
         for _ in range(2):
             span_of(shrubs + ferns, edge + side * rnd.uniform(0.2, 5.0), y + rnd.uniform(0, step), 0.6, 1.6)
-        if rnd.random() < 0.25:
+        if rnd.random() < 0.55:
             span_of(palms, edge + side * rnd.uniform(3.0, 14.0), y + rnd.uniform(0, step), 5.0, 9.5)
         span_of(broad, edge + side * rnd.uniform(2.5, 9.0), y + rnd.uniform(0, step), 2.6, 5.0)
         for _ in range(2):
@@ -1093,16 +1093,20 @@ def build_forest():
         x, y = rnd.uniform(-160, 160), rnd.uniform(430, 3400)
         if -50 < x < 16 or abs(x - exit_center(y)) < 14:
             continue
-        span_of(pines + pines + broad, x, y, 9.0, 20.0)
+        span_of(pines + pines + broad + palms + palms, x, y, 9.0, 20.0)
     for _ in range(6000):
         x, y = rnd.uniform(-2500, 2500), rnd.uniform(-400, 14000)
         if (abs(x) < 170 and y < 3500) or -50 < x < 16 or abs(x - exit_center(y)) < 14:
             continue
-        span_of(pines + pines + broad + wall, x, y, 11.0, 24.0)
+        span_of(pines + pines + broad + wall + palms, x, y, 11.0, 24.0)
     blades = tufts + imported("grass_medium_01")
-    lawn_carpet("median_grass", -25.4, -8.9, -20, 200, 110.0, blades, 0.11, 0.22, 11)
-    lawn_carpet("right_grass", 7.5, 14.8, -20, 124, 120.0, blades, 0.11, 0.24, 12)
-    lawn_carpet("far_grass", -48.5, -42.0, -20, 200, 40.0, blades, 0.12, 0.24, 13)
+    lawn_carpet("median_grass", -25.4, -8.9, -20, 450, 110.0, blades, 0.2, 0.42, 11)
+    lawn_carpet("right_grass", 7.5, 14.8, -20, 124, 120.0, blades, 0.2, 0.42, 12)
+    lawn_carpet("far_grass", -48.5, -42.0, -20, 450, 60.0, blades, 0.2, 0.4, 13)
+    weeds = tufts + imported("grass_medium_01") + ferns
+    lawn_carpet("median_weeds", -25.4, -8.9, -20, 450, 2.5, weeds, 0.35, 0.95, 21, "weed_sources")
+    lawn_carpet("right_weeds", 7.5, 14.8, -20, 124, 3.0, weeds, 0.35, 0.95, 22, "weed_sources")
+    lawn_carpet("far_weeds", -48.5, -42.0, -20, 450, 2.5, weeds, 0.35, 0.9, 23, "weed_sources")
 
 
 def build_road():
@@ -1143,6 +1147,24 @@ def build_road():
             box("marker", (0.1, 0.1, 0.018), (x, y + 6.5, 0.012), reflector, bevel=0.006)
         y += 12.0
     sheet("road_far", -41.6, -26.0, -60, 14000, 0, asphalt)
+    sealant = surface("crack_seal", (14, 14, 15), 0.32)
+    patch = surface("asphalt_patch", (40, 40, 42), 0.85)
+    wear = surface("tyre_wear", (46, 46, 48), 0.55)
+    marks = random.Random(91)
+    for lane in (-3.6, 0.0, 3.6):
+        for track in (-0.85, 0.85):
+            ribbon("wear", lambda y, c=lane + track: c, 0.32, -60, 3000, 0.002, wear, 25)
+    y = -40.0
+    while y < 1400:
+        sheet("joint", -8.4, 7.2, y, y + 0.03, 0.003, sealant)
+        y += 15.0
+    for _ in range(140):
+        y0 = marks.uniform(-40, 1400)
+        base, phase, size = marks.uniform(-8.0, 6.8), marks.uniform(0, 6.3), marks.uniform(3.0, 14.0)
+        ribbon("crack", lambda y, b=base, p=phase: b + 0.35 * math.sin(y * 0.9 + p) + 0.15 * math.sin(y * 2.3 + p * 2), 0.03, y0, y0 + size, 0.004, sealant, 0.5)
+    for _ in range(30):
+        x0, y0 = marks.uniform(-8.0, 4.5), marks.uniform(-40, 1400)
+        sheet("patch", x0, x0 + marks.uniform(0.8, 2.6), y0, y0 + marks.uniform(1.0, 4.0), 0.0025, patch)
     ribbon("far_median_line", lambda y: -28.8, 0.09, -60, 14000, 0.012, yellow, 40)
     ribbon("far_edge", lambda y: -39.4, 0.09, -60, 14000, 0.012, white, 40)
     y = -50.0
@@ -1177,7 +1199,8 @@ def build_road():
 def build_traffic():
     glass = surface("traffic_glass", (14, 16, 20), 0.08, 0.0, coat=1.0)
     tyre = surface("tyre", (18, 18, 18), 0.8)
-    tail = flat("traffic_tail", (255, 26, 20), 2.5)
+    tail = flat("traffic_tail", (200, 22, 16), 0.45)
+    rim = surface("traffic_rim", (150, 152, 156), 0.3, 1.0)
     plan = [
         ((236, 236, 232), -3.6, 46.0, 21.0, "car"),
         ((40, 42, 46), -3.6, 92.0, 21.5, "suv"),
@@ -1190,16 +1213,28 @@ def build_traffic():
         ((120, 20, 24), -37.5, 640.0, -30.0, "car"),
     ]
     cars = []
+
+    def wheel(root, wx, wy, r, half):
+        hub = empty("wheel_hub", root)
+        hub.location = (wx, wy, r)
+        side = 1.0 if wx > 0 else -1.0
+        tube("wheel", [(-half, 0, 0), (half, 0, 0)], r, tyre, hub)
+        box("rim", (0.02, r * 1.15, r * 1.15), (side * (half + 0.005), 0, 0), rim, hub, bevel=0.01)
+        for k in range(3):
+            box("spoke", (0.03, r * 1.5, 0.07), (side * (half + 0.02), 0, 0), tyre, hub, rot=(k * math.pi / 3, 0, 0))
+        return hub, r
+
     for i, (color, x, y, speed, kind) in enumerate(plan):
         paint = surface("traffic_paint%d" % i, color, 0.22, 0.55, coat=0.6)
         root = empty("traffic%d" % i)
+        wheels = []
         if kind == "truck":
             box("trailer", (2.55, 13.5, 2.9), (0, -3.0, 2.35), paint, root, bevel=0.06)
             box("cab", (2.45, 2.4, 2.6), (0, 4.9, 1.75), paint, root, bevel=0.18)
             box("windshield", (2.2, 0.08, 0.9), (0, 6.12, 2.45), glass, root, bevel=0.03)
             for wy in (-8.2, -7.0, 3.8, 5.2):
                 for wx in (-1.05, 1.05):
-                    tube("wheel", [(wx - 0.16, wy, 0.5), (wx + 0.16, wy, 0.5)], 0.5, tyre, root)
+                    wheels.append(wheel(root, wx, wy, 0.5, 0.16))
             for side in (-1.0, 1.0):
                 box("tail", (0.25, 0.05, 0.12), (side, -9.76, 1.0), tail, root, bevel=0.01)
         else:
@@ -1211,10 +1246,10 @@ def build_traffic():
                 box("tail", (0.4, 0.05, 0.1), (side, -2.31, 0.82 + high), tail, root, bevel=0.02)
             for wx in (-0.84, 0.84):
                 for wy in (-1.42, 1.42):
-                    tube("wheel", [(wx - 0.11, wy, 0.34), (wx + 0.11, wy, 0.34)], 0.34, tyre, root)
+                    wheels.append(wheel(root, wx, wy, 0.34, 0.11))
         if speed < 0:
             root.rotation_euler = (0, 0, math.pi)
-        cars.append((root, x, y, speed))
+        cars.append((root, x, y, speed, wheels))
     return cars
 
 
@@ -2128,8 +2163,10 @@ def main():
         camera.lens = lens
         frame = car_frame(t)
         car.location = frame.translation
-        for other, x, y, speed in traffic:
+        for other, x, y, speed, wheels in traffic:
             other.location = (x, y + speed * t, 0)
+            for hub, r in wheels:
+                hub.rotation_euler = (-abs(speed) * t / r, 0, 0)
         turn(car, frame.to_quaternion())
         high = span(t, 10.9, 11.7)
         NIGHT[1].outputs[0].default_value = high
