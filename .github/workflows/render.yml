@@ -1,0 +1,39 @@
+name: render
+on:
+  push:
+    paths: ["v2/**", ".github/workflows/render.yml"]
+jobs:
+  render:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/cache@v4
+        with:
+          path: assets
+          key: assets-${{ hashFiles('v2/fetch.py') }}
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-bpy-4.5
+      - run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libxi6 libxxf86vm1 libxfixes3 libxrender1 libgl1 libsm6 libxkbcommon0 libegl1 fonts-dejavu-core
+          sudo apt-get install -y -qq fonts-overpass || echo "no overpass font"
+          pip install -q "bpy==4.5.*"
+          python v2/fetch.py assets
+      - env:
+          HIGH: "1"
+        run: python v2/scene.py ${{ matrix.shard }} ${{ strategy.job-total }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: frames-${{ matrix.shard }}
+          path: out
