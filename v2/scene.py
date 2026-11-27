@@ -1575,9 +1575,9 @@ def build_sea(ladder_at):
     x, y, z = ladder_at
     low, high = z - 12.5, z - 1.2
     near = sea_slab("sea_near", mat, ladder_at, (x - 70, y - 34, low), (x + 70, y + 200, high), (200, 330, 36))
-    far = sea_slab("sea_far", mat, ladder_at, (x - 190, y + 200, low), (x + 190, y + 330, high), (220, 76, 22))
-    left = sea_slab("sea_left", mat, ladder_at, (x - 190, y - 34, low), (x - 70, y + 200, high), (70, 136, 22))
-    right = sea_slab("sea_right", mat, ladder_at, (x + 70, y - 34, low), (x + 190, y + 200, high), (70, 136, 22))
+    far = sea_slab("sea_far", mat, ladder_at, (x - 1500, y + 200, low), (x + 1500, y + 2500, high), (320, 250, 14))
+    left = sea_slab("sea_left", mat, ladder_at, (x - 1500, y - 34, low), (x - 70, y + 200, high), (150, 26, 14))
+    right = sea_slab("sea_right", mat, ladder_at, (x + 70, y - 34, low), (x + 1500, y + 200, high), (150, 26, 14))
     deep, t, out = bare("below_clouds")
     place = new(t, "ShaderNodeNewGeometry").outputs["Position"]
     emission = new(t, "ShaderNodeEmission")
