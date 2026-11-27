@@ -1094,6 +1094,11 @@ def build_forest():
         if -50 < x < 16 or abs(x - exit_center(y)) < 14:
             continue
         span_of(pines + pines + broad, x, y, 9.0, 20.0)
+    for _ in range(6000):
+        x, y = rnd.uniform(-2500, 2500), rnd.uniform(-400, 14000)
+        if (abs(x) < 170 and y < 3500) or -50 < x < 16 or abs(x - exit_center(y)) < 14:
+            continue
+        span_of(pines + pines + broad + wall, x, y, 11.0, 24.0)
     blades = tufts + imported("grass_medium_01")
     lawn_carpet("median_grass", -25.4, -8.9, -20, 200, 110.0, blades, 0.11, 0.22, 11)
     lawn_carpet("right_grass", 7.5, 14.8, -20, 124, 120.0, blades, 0.11, 0.24, 12)
