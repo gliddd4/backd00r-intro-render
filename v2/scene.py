@@ -1168,7 +1168,7 @@ def build_road():
 
     def arc(f):
         a = math.radians(-58 + 116 * f)
-        return Vector((-60 + 420 * math.sin(a), 980 - 420 * math.cos(a) + 340 * f, 0))
+        return Vector((-60 + 420 * math.sin(a), 760 - 420 * math.cos(a) + 340 * f, 0))
 
     sections, rails_l, rails_r = [], [], []
     for i in range(121):
@@ -1176,7 +1176,7 @@ def build_road():
         c = arc(f)
         ahead = (arc(min(1, f + 0.01)) - arc(max(0, f - 0.01))).normalized()
         side = Vector((ahead.y, -ahead.x, 0))
-        z = 11.5 + 2.5 * math.sin(math.pi * f)
+        z = 14.0 + 4.0 * math.sin(math.pi * f)
         bank = 0.35 * math.sin(math.pi * f)
         w = 6.5
         sections.append([c + side * -w + Vector((0, 0, z - 1.5)), c + side * w + Vector((0, 0, z - 1.5 + bank * 0.3)), c + side * w + Vector((0, 0, z + bank * 0.3)), c + side * -w + Vector((0, 0, z))])
@@ -2082,6 +2082,7 @@ def steer_wheel(root, parts):
         return
     pts = points(signs)
     hub = pts.mean(0)
+    print("steering hub", [round(float(v), 3) for v in hub], "signs size", [round(float(v), 3) for v in pts.max(0) - pts.min(0)], flush=True)
     axis = np.linalg.eigh(np.cov((pts - hub).T))[1][:, 0]
     if axis @ (np.array(SEAT[:]) - hub) < 0:
         axis = -axis
@@ -2095,12 +2096,14 @@ def steer_wheel(root, parts):
         along = rel @ axis
         radial = np.linalg.norm(rel - np.outer(along, axis), axis=1)
         label = islands(mesh)
-        inside = (radial < 0.215) & (np.abs(along) < 0.09)
+        inside = (radial < 0.27) & (np.abs(along) < 0.16)
         take = np.zeros(len(co), bool)
         for part in np.unique(label[inside]):
             pick = label == part
-            if inside[pick].all():
+            size = co[pick].max(0) - co[pick].min(0)
+            if inside[pick].mean() > 0.9 and size.max() < 0.55:
                 take |= pick
+        print("steering scan", name, int(inside.sum()), int(take.sum()), flush=True)
         if not take.any():
             continue
         for keep_wheel in (True, False):
@@ -2142,10 +2145,10 @@ def hang_freshener(root, parts):
     gold = surface("freshener_print", (214, 176, 96), 0.4, 0.6)
     for m in (string, card, gold):
         ghost(m)
-    tube("freshener_string", [(0, 0, 0), (0, 0, -0.085)], 0.0008, string, hook)
-    box("freshener_card", (0.075, 0.003, 0.1), (0, 0, -0.14), card, hook, bevel=0.004)
+    tube("freshener_string", [(0, 0, 0), (0, 0, -0.2)], 0.0008, string, hook)
+    box("freshener_card", (0.075, 0.003, 0.1), (0, 0, -0.255), card, hook, bevel=0.004)
     sym = empty("freshener_symbol", hook)
-    sym.location = (0, -0.002, -0.13)
+    sym.location = (0, -0.002, -0.245)
     ring = [(0.016 * math.cos(a / 16 * math.tau), 0, 0.016 * math.sin(a / 16 * math.tau)) for a in range(17)]
     tube("venus_ring", ring, 0.0022, gold, sym)
     tube("venus_stem", [(0, 0, -0.016), (0, 0, -0.04)], 0.0022, gold, sym)
