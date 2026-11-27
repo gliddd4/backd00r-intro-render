@@ -271,11 +271,23 @@ def lamp(name, kind, color, energy, parent=None, loc=(0, 0, 0), **settings):
     obj.location = loc
     return obj
 
+def smoother(x):
+    x = clamp(x)
+    return x * x * x * (x * (6 * x - 15) + 10)
+
+
+RAMP = [0.0]
+for i in range(1, 2400):
+    RAMP.append(RAMP[-1] + 0.3 * smoother((i * 0.5 - 140) / 100) * 0.5)
+
+
 def ramp_offset(y):
-    return 15 * smooth((y - 145) / 65) + max(0.0, y - 210) * 0.25
+    i = min(max(y, 0.0), 1198.0) * 2
+    a = int(i)
+    return RAMP[a] + (RAMP[a + 1] - RAMP[a]) * (i - a)
 
 def car_x(y):
-    return 3.6 * smooth((y - 130) / 30) + ramp_offset(y)
+    return 3.6 * smoother((y - 105) / 75) + ramp_offset(y)
 
 def speed(t):
     if t < 2.4:
@@ -310,7 +322,9 @@ def car_frame(t):
     pitch = 0.24 * span(t, 6.9, 8.1) - 0.12 * span(t, 9.0, 10.4)
     shake = (1 - span(t, 7.0, 7.6)) * 0.006 * (math.sin(t * 41) + math.sin(t * 23.7)) * 0.5
     bob = span(t, 7.4, 8.4) * 0.07 * math.sin(t * 3.1)
-    return Matrix.Translation((car_x(y), y, car_z(t) + shake + bob)) @ Matrix.Rotation(heading, 4, "Z") @ Matrix.Rotation(pitch, 4, "X")
+    bend = (car_x(y + 2.0) - 2 * car_x(y) + car_x(y - 2.0)) / 4.0
+    roll = max(-0.05, min(0.05, -0.0035 * speed(t) ** 2 * bend)) * (1 - span(t, 7.0, 7.6))
+    return Matrix.Translation((car_x(y), y, car_z(t) + shake + bob)) @ Matrix.Rotation(heading, 4, "Z") @ Matrix.Rotation(pitch, 4, "X") @ Matrix.Rotation(roll, 4, "Y")
 
 def flat(name, color, strength=1.0):
     m, t, out = bare(name)
@@ -1245,6 +1259,60 @@ def sheeting(name, color, glow):
     return m
 
 
+WINK = {}
+
+
+def wink(obj):
+    bpy.ops.object.select_all(action="DESELECT")
+    bpy.context.view_layer.objects.active = obj
+    obj.select_set(True)
+    bpy.ops.object.convert(target="MESH")
+    co = np.empty(len(obj.data.vertices) * 3, np.float64)
+    obj.data.vertices.foreach_get("co", co)
+    x0, x1 = co[0::3].min(), co[0::3].max()
+    length = x1 - x0
+    group = bpy.data.node_groups.new("wink", "GeometryNodeTree")
+    group.interface.new_socket(name="Geometry", in_out="INPUT", socket_type="NodeSocketGeometry")
+    group.interface.new_socket(name="Geometry", in_out="OUTPUT", socket_type="NodeSocketGeometry")
+    given = new(group, "NodeGroupInput")
+    out = new(group, "NodeGroupOutput")
+    finer = new(group, "GeometryNodeSubdivideMesh")
+    finer.inputs["Level"].default_value = 3
+    group.links.new(given.outputs[0], finer.inputs["Mesh"])
+    amount = new(group, "ShaderNodeValue")
+    amount.outputs[0].default_value = 0.0
+    WINK["value"] = amount
+    xyz = new(group, "ShaderNodeSeparateXYZ")
+    group.links.new(new(group, "GeometryNodeInputPosition").outputs[0], xyz.inputs[0])
+    u = op(group, "MINIMUM", op(group, "MAXIMUM", op(group, "DIVIDE", op(group, "SUBTRACT", xyz.outputs["X"], x0), length), 0.0), 1.0)
+    k = amount.outputs[0]
+    s0 = op(group, "ADD", 1.0, op(group, "MULTIPLY", k, 0.45 - 1))
+    s1 = op(group, "ADD", 1.0, op(group, "MULTIPLY", k, 0.06 - 1))
+    curve = op(group, "DIVIDE", op(group, "SUBTRACT", 1.0, op(group, "POWER", op(group, "SUBTRACT", 1.0, u), 1.7)), 1.7)
+    mapped = op(group, "ADD", op(group, "MULTIPLY", s1, u), op(group, "MULTIPLY", op(group, "SUBTRACT", s0, s1), curve))
+    place = new(group, "ShaderNodeCombineXYZ")
+    group.links.new(op(group, "ADD", x0, op(group, "MULTIPLY", mapped, length)), place.inputs["X"])
+    group.links.new(xyz.outputs["Y"], place.inputs["Y"])
+    group.links.new(xyz.outputs["Z"], place.inputs["Z"])
+    move = new(group, "GeometryNodeSetPosition")
+    group.links.new(finer.outputs[0], move.inputs["Geometry"])
+    group.links.new(place.outputs[0], move.inputs["Position"])
+    group.links.new(move.outputs[0], out.inputs[0])
+    obj.modifiers.new("wink", "NODES").node_group = group
+
+
+def wink_amount(t, at=3.6):
+    snap, shut, release = 0.12, 0.12, 0.24
+    if t < at or t > at + snap + shut + release:
+        return 0.0
+    if t < at + snap:
+        return 1 - (1 - (t - at) / snap) ** 3
+    if t < at + snap + shut:
+        return 1.0
+    x = (t - at - snap - shut) / release
+    return 1 - x * x * (3 - 2 * x)
+
+
 def build_sign():
     steel = surface("gantry", (140, 142, 146), 0.45, 1.0)
     green = sheeting("sign_green", (0, 96, 64), 0.02)
@@ -1276,7 +1344,7 @@ def build_sign():
     mesh_object("band", [(sx - 0.43, y - 0.03, sz + 0.24), (sx + 0.43, y - 0.03, sz + 0.24), (sx + 0.4, y - 0.03, sz + 0.45), (sx + 0.17, y - 0.03, sz + 0.51), (sx - 0.17, y - 0.03, sz + 0.51), (sx - 0.4, y - 0.03, sz + 0.45)], [(0, 1, 2, 3, 4, 5)], red)
     words("75", 0.55, (sx, y - 0.04, sz - 0.12), white)
     words("NORTH", 0.62, (x + 0.6, y - 0.03, z + 0.85), white)
-    words("BACKD00R", 1.18, (x, y - 0.03, z - 0.2), white)
+    wink(words("BACKD00R", 1.18, (x, y - 0.03, z - 0.2), white))
     words("EXIT 00", 0.54, (x - 0.6, y - 0.03, z - 1.18), white)
     ax, az = x + 1.8, z - 1.18
     arrow = [(-0.4, -0.38), (-0.26, -0.47), (0.18, 0.07), (0.3, -0.04), (0.4, 0.42), (-0.07, 0.37), (0.05, 0.26)]
@@ -2066,6 +2134,7 @@ def main():
         scene.view_settings.exposure = 0.0 if clear else 1.0
         PHASE[1].outputs[0].default_value = span(t, 8.75, 9.05) * (1 - span(t, 9.6, 10.25))
         CLOCK[1].outputs[0].default_value = t
+        WINK["value"].outputs[0].default_value = wink_amount(t)
         opening = span(t, 14.05, 14.95)
         OPEN[1].outputs[0].default_value = opening
         hinge.rotation_euler = (0, 0, -math.radians(108) * opening)
