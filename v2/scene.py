@@ -674,9 +674,23 @@ def build_sky():
     disc = remap(t, toward.outputs["Value"], math.cos(SUN_CORE * 1.2), math.cos(SUN_CORE * 0.8))
     plain = blend(t, disc, photo.outputs["Color"], capped.outputs[0])
     vivid = new(t, "ShaderNodeHueSaturation")
-    vivid.inputs["Saturation"].default_value = 1.4
+    vivid.inputs["Saturation"].default_value = 1.6
     t.links.new(plain, vivid.inputs["Color"])
-    deep = blend(t, 1.0, vivid.outputs["Color"], remap(t, z, 0.1, 0.9, 1.0, 0.8), "MULTIPLY")
+    crisp = new(t, "ShaderNodeGamma")
+    crisp.inputs["Gamma"].default_value = 1.2
+    t.links.new(vivid.outputs["Color"], crisp.inputs["Color"])
+    deep = blend(t, 1.0, crisp.outputs["Color"], remap(t, z, 0.0, 0.8, 0.95, 0.74), "MULTIPLY")
+    trails = None
+    for normal, width, strength, seed in (((0.31, 0.25, -0.92), 0.0022, 0.85, 1), ((-0.55, 0.12, -0.83), 0.007, 0.4, 5)):
+        across = new(t, "ShaderNodeVectorMath", operation="DOT_PRODUCT")
+        t.links.new(aim.outputs["Vector"], across.inputs[0])
+        across.inputs[1].default_value = tuple(Vector(normal).normalized())
+        line = remap(t, op(t, "ABSOLUTE", across.outputs["Value"]), width, 0.0)
+        pieces = remap(t, grain(t, aim.outputs["Vector"], (5.0, 5.0, 5.0), 3, 0.5, (seed, 0, 0)), 0.38, 0.6)
+        trail = op(t, "MULTIPLY", op(t, "MULTIPLY", line, pieces), strength)
+        trails = trail if trails is None else op(t, "ADD", trails, trail)
+    trails = op(t, "MULTIPLY", trails, remap(t, z, 0.12, 0.3))
+    deep = blend(t, op(t, "MINIMUM", trails, 1.0), deep, lin((255, 255, 255), 1.3))
     dusk = blend(t, new(t, "ShaderNodeLightPath").outputs["Is Camera Ray"], plain, deep)
     up = op(t, "ADD", op(t, "MULTIPLY", z, 0.5), 0.5)
     high = gradient(t, up, [(0.40, (96, 140, 190)), (0.495, (170, 208, 224)), (0.52, (132, 192, 224)), (0.57, (82, 148, 207)), (0.65, (40, 96, 170)), (0.80, (18, 46, 104)), (1.0, (6, 16, 46))])
@@ -924,7 +938,7 @@ def vary(kinds, hue=0.05, value=0.35):
                 shift = new(t, "ShaderNodeHueSaturation")
                 wire(t, op(t, "ADD", 0.5 - hue / 2, op(t, "MULTIPLY", seed, hue)), shift.inputs["Hue"])
                 wire(t, op(t, "ADD", 0.9, op(t, "MULTIPLY", other, 0.2)), shift.inputs["Saturation"])
-                wire(t, op(t, "ADD", 1.0 - value / 2, op(t, "MULTIPLY", other, value)), shift.inputs["Value"])
+                wire(t, op(t, "ADD", 0.68 - value / 2, op(t, "MULTIPLY", other, value)), shift.inputs["Value"])
                 t.links.new(source, shift.inputs["Color"])
                 t.links.new(shift.outputs["Color"], bsdf.inputs["Base Color"])
 
@@ -1214,8 +1228,16 @@ def sheeting(name, color, glow):
     t = m.node_tree
     bsdf = t.nodes["Principled BSDF"]
     place = new(t, "ShaderNodeNewGeometry").outputs["Position"]
+    xyz = new(t, "ShaderNodeSeparateXYZ")
+    t.links.new(place, xyz.inputs[0])
     dirt = remap(t, grain(t, place, (1.3, 1.3, 0.5), 8, 0.7), 0.35, 0.75, 1.0, 0.74)
-    t.links.new(blend(t, 1.0, lin(color), dirt, "MULTIPLY"), bsdf.inputs["Base Color"])
+    streaks = remap(t, grain(t, place, (26.0, 26.0, 0.6), 6, 0.6), 0.45, 0.8, 1.0, 0.82)
+    faded = remap(t, grain(t, place, (0.7, 0.7, 0.9), 4, 0.55, (3, 1, 7)), 0.4, 0.7, 0.0, 0.16)
+    seam = remap(t, op(t, "ABSOLUTE", op(t, "SUBTRACT", op(t, "FLOORED_MODULO", xyz.outputs["X"], 1.22), 0.61)), 0.588, 0.605, 1.0, 0.55)
+    worn = blend(t, 1.0, blend(t, 1.0, lin(color), dirt, "MULTIPLY"), streaks, "MULTIPLY")
+    worn = blend(t, faded, blend(t, 1.0, worn, seam, "MULTIPLY"), lin((200, 205, 190)))
+    t.links.new(worn, bsdf.inputs["Base Color"])
+    wire(t, op(t, "ADD", 0.38, op(t, "MULTIPLY", faded, 1.2)), bsdf.inputs["Roughness"])
     return m
 
 
