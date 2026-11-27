@@ -473,7 +473,7 @@ SEAT = Vector((-0.37, -0.35, 1.06))
 
 AHEAD = Vector((-0.37, 20.0, 0.55))
 
-RISE = [(8.6, None, None), (9.4, Vector((-0.2, 0.1, 2.3)), Vector((3.0, 22.0, 14.3))), (10.5, Vector((0.0, 1.2, 10.0)), Vector((1.0, 13.2, 31.0)))]
+RISE = [(8.6, None, None), (9.05, Vector((-0.32, 1.7, 1.12)), Vector((-0.3, 22.0, 1.6))), (9.6, Vector((-0.2, 4.6, 3.2)), Vector((1.0, 26.0, 12.0))), (10.5, Vector((0.0, 7.0, 10.0)), Vector((1.0, 18.0, 31.0)))]
 
 def in_seat(t):
     frame = car_frame(t)
@@ -1307,15 +1307,18 @@ def wink(obj):
 
 
 def wink_amount(t, at=3.6):
-    snap, shut, release = 0.18, 0.18, 0.36
-    if t < at or t > at + snap + shut + release:
-        return 0.0
-    if t < at + snap:
-        return 1 - (1 - (t - at) / snap) ** 3
-    if t < at + snap + shut:
-        return 1.0
-    x = (t - at - snap - shut) / release
-    return 1 - x * x * (3 - 2 * x)
+    snap, shut, release, rest = 0.12, 0.12, 0.24, 0.1
+    one = snap + shut + release
+    for start in (at, at + one + rest):
+        if start <= t <= start + one:
+            x = t - start
+            if x < snap:
+                return 1 - (1 - x / snap) ** 3
+            if x < snap + shut:
+                return 1.0
+            x = (x - snap - shut) / release
+            return 1 - x * x * (3 - 2 * x)
+    return 0.0
 
 
 def build_sign():
