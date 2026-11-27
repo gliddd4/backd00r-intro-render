@@ -30,7 +30,7 @@ jobs:
           pip install -q "bpy==4.5.*"
           python v2/fetch.py assets
       - env:
-          HIGH: "1"
+          HIGH: ""
         run: python v2/scene.py ${{ matrix.shard }} ${{ strategy.job-total }}
       - uses: actions/upload-artifact@v4
         if: always()

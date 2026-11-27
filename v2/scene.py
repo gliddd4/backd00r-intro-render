@@ -459,7 +459,7 @@ SEAT = Vector((-0.37, -0.35, 1.06))
 
 AHEAD = Vector((-0.37, 20.0, 0.55))
 
-RISE = [(8.6, None, None), (9.4, Vector((-0.2, 0.1, 2.3)), Vector((6.5, 30.0, 1.6))), (10.5, Vector((0.0, 1.2, 6.5)), Vector((8.0, 34.0, 6.0)))]
+RISE = [(8.6, None, None), (9.4, Vector((-0.2, 0.1, 2.3)), Vector((6.5, 30.0, 4.0))), (10.5, Vector((0.0, 1.2, 6.5)), Vector((8.0, 34.0, 14.0)))]
 
 def in_seat(t):
     frame = car_frame(t)
@@ -468,7 +468,7 @@ def in_seat(t):
     lock = span(t, 2.2, 3.8) * (1 - span(t, 4.3, 5.6))
     sign = (SIGN - pos).normalized()
     aim = ahead.lerp(sign, lock).normalized()
-    out_window = (frame.to_3x3() @ Vector((0.86, 0.45, -0.18))).normalized()
+    out_window = (frame.to_3x3() @ Vector((-0.93, 0.34, -0.1))).normalized()
     aim = aim.lerp(out_window, span(t, 7.15, 7.75) * (1 - span(t, 8.05, 8.6))).normalized()
     sway = Vector((math.sin(t * 2.3) * 0.004, 0, math.sin(t * 3.7) * 0.003))
     return pos, pos + (aim + sway) * 20, 24 + 8 * lock
