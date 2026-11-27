@@ -1803,12 +1803,12 @@ def weather(material):
         t.links.remove(link)
         return source
 
-    grimy = blend(t, op(t, "MULTIPLY", blotch, 0.14), taken("Base Color"), lin((40, 36, 32)))
-    t.links.new(blend(t, op(t, "MULTIPLY", edge, 0.22), grimy, lin((235, 230, 222))), bsdf.inputs["Base Color"])
-    patchy = op(t, "MULTIPLY", taken("Roughness"), op(t, "ADD", 0.88, op(t, "MULTIPLY", blotch, 0.3)))
-    wire(t, op(t, "ADD", patchy, op(t, "MULTIPLY", edge, 0.12)), bsdf.inputs["Roughness"])
+    grimy = blend(t, op(t, "MULTIPLY", blotch, 0.05), taken("Base Color"), lin((40, 36, 32)))
+    t.links.new(blend(t, op(t, "MULTIPLY", edge, 0.08), grimy, lin((235, 230, 222))), bsdf.inputs["Base Color"])
+    patchy = op(t, "MULTIPLY", taken("Roughness"), op(t, "ADD", 0.94, op(t, "MULTIPLY", blotch, 0.12)))
+    wire(t, op(t, "ADD", patchy, op(t, "MULTIPLY", edge, 0.05)), bsdf.inputs["Roughness"])
     bump = new(t, "ShaderNodeBump")
-    bump.inputs["Strength"].default_value = 0.06
+    bump.inputs["Strength"].default_value = 0.03
     bump.inputs["Distance"].default_value = 0.001
     wire(t, grain(t, place, (140.0, 140.0, 140.0), 3, 0.55), bump.inputs["Height"])
     if bsdf.inputs["Normal"].is_linked:
