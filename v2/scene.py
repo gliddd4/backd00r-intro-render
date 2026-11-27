@@ -1122,14 +1122,14 @@ def build_road():
             y += step
         planar_uv(loft(name, sections, mat, closed=False, caps=False))
 
-    sheet("ground", -1500, 1500, -300, 5000, -0.05, grass)
-    sheet("road", -8.4, 7.2, -60, 4200, 0, asphalt)
+    sheet("ground", -30000, 30000, -30000, 40000, -0.05, grass)
+    sheet("road", -8.4, 7.2, -60, 14000, 0, asphalt)
     ribbon("ramp", exit_center, 3.4, 128, 2600, 0.004, asphalt, 2.0)
     ribbon("ramp_left", lambda y: exit_center(y) - 2.4, 0.08, 172, 2600, 0.012, yellow, 2.0)
     ribbon("ramp_right", lambda y: exit_center(y) + 2.4, 0.08, 150, 2600, 0.012, white, 2.0)
-    ribbon("median_line", lambda y: -5.6, 0.09, -60, 4200, 0.012, yellow, 20)
+    ribbon("median_line", lambda y: -5.6, 0.09, -60, 14000, 0.012, yellow, 40)
     ribbon("edge_a", lambda y: 5.5, 0.09, -60, 144, 0.012, white, 12)
-    ribbon("edge_b", lambda y: 5.5, 0.09, 192, 4200, 0.012, white, 59)
+    ribbon("edge_b", lambda y: 5.5, 0.09, 192, 14000, 0.012, white, 59)
     y = -50.0
     index = 0
     while y < 3200:
@@ -1137,9 +1137,9 @@ def build_road():
             ribbon("dash", lambda _, x=x: x, 0.075, y, y + 3.0, 0.012, white)
             box("marker", (0.1, 0.1, 0.018), (x, y + 6.5, 0.012), reflector, bevel=0.006)
         y += 12.0
-    sheet("road_far", -41.6, -26.0, -60, 4200, 0, asphalt)
-    ribbon("far_median_line", lambda y: -28.8, 0.09, -60, 4200, 0.012, yellow, 20)
-    ribbon("far_edge", lambda y: -39.4, 0.09, -60, 4200, 0.012, white, 20)
+    sheet("road_far", -41.6, -26.0, -60, 14000, 0, asphalt)
+    ribbon("far_median_line", lambda y: -28.8, 0.09, -60, 14000, 0.012, yellow, 40)
+    ribbon("far_edge", lambda y: -39.4, 0.09, -60, 14000, 0.012, white, 40)
     y = -50.0
     while y < 3200:
         for x in (-32.3, -35.9):
@@ -1302,7 +1302,7 @@ def wink(obj):
 
 
 def wink_amount(t, at=3.6):
-    snap, shut, release = 0.12, 0.12, 0.24
+    snap, shut, release = 0.18, 0.18, 0.36
     if t < at or t > at + snap + shut + release:
         return 0.0
     if t < at + snap:
