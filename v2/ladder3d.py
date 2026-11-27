@@ -74,7 +74,8 @@ parts = [
     beam("right", foot_r, top_r, 0.11, 0.09, normal, wood("r", 2, char_from=rail_len + 0.4, tint=0.82), wood("re", 12, char_from=rail_len + 0.4, tint=2.15)),
 ]
 for n, (a, b) in enumerate(FIT["rungs"]):
-    parts.append(beam("rung%d" % n, Vector(a), Vector(b), 0.085, 0.055, up, wood("g%d" % n, 3 + n, char_from=None, tint=1.38), dark, 0.8))
+    rung_wood = wood("g%d" % n, 3 + n, char_from=None, tint=1.38)
+    parts.append(beam("rung%d" % n, Vector(a), Vector(b), 0.085, 0.055, up, rung_wood, rung_wood, 0.8))
 for obj in parts:
     world = obj.matrix_world.copy()
     obj.parent = ladder
