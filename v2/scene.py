@@ -4,8 +4,8 @@ import random
 import sys
 import time
 
-import bmesh
 import bpy
+import bmesh
 from mathutils import Matrix, Vector, noise
 
 import math
