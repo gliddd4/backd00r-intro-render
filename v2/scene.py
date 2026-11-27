@@ -1536,7 +1536,7 @@ def sea_slab(name, mat, ladder_at, low, high, resolution):
         return op(group, "SQRT", op(group, "SUBTRACT", 1.0, op(group, "POWER", d, 2.0)))
 
     base = ladder_at.z - 9.4
-    cover = op(group, "MULTIPLY", op(group, "SUBTRACT", billow(0.07, 3, 0.2), 0.47), 9.0)
+    cover = op(group, "MULTIPLY", op(group, "SUBTRACT", billow(0.07, 3, 0.2), 0.5), 16.0)
     top = op(group, "ADD", base, op(group, "MULTIPLY", puffs(0.045), 5.0))
     top = op(group, "ADD", top, op(group, "MULTIPLY", puffs(0.2), 2.2))
     top = op(group, "ADD", top, op(group, "MULTIPLY", puffs(0.55), 1.0))
@@ -1571,7 +1571,7 @@ def sea_slab(name, mat, ladder_at, low, high, resolution):
 
 
 def build_sea(ladder_at):
-    mat = cloud_matter("cloud_sea", 3.2, 0.2)
+    mat = cloud_matter("cloud_sea", 3.2, 0.05)
     mat.cycles.volume_step_rate = 0.4
     x, y, z = ladder_at
     low, high = z - 12.5, z - 1.2
