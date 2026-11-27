@@ -2130,11 +2130,7 @@ def steer_wheel(root, parts):
 
 
 def hang_freshener(root, parts):
-    mirror = next((mesh for name, mesh in parts if name.startswith("mirror_middle")), None)
-    if mirror is None:
-        return
-    pts = points(mirror)
-    top = Vector((float(pts[:, 0].mean()), float(pts[:, 1].mean()), float(pts[:, 2].min()) - 0.01))
+    top = Vector((0.06, 0.29, 1.1))
     hook = empty("freshener_pivot", root)
     hook.location = top
     string = surface("freshener_string", (200, 196, 186), 0.8)
@@ -2142,10 +2138,10 @@ def hang_freshener(root, parts):
     gold = surface("freshener_print", (214, 176, 96), 0.4, 0.6)
     for m in (string, card, gold):
         ghost(m)
-    tube("freshener_string", [(0, 0, 0), (0, 0, -0.3)], 0.0008, string, hook)
-    box("freshener_card", (0.075, 0.003, 0.1), (0, 0, -0.355), card, hook, bevel=0.004)
+    tube("freshener_string", [(0, 0, 0), (0, 0, -0.1)], 0.0008, string, hook)
+    box("freshener_card", (0.075, 0.003, 0.1), (0, 0, -0.155), card, hook, bevel=0.004)
     sym = empty("freshener_symbol", hook)
-    sym.location = (0, -0.002, -0.345)
+    sym.location = (0, -0.002, -0.145)
     ring = [(0.016 * math.cos(a / 16 * math.tau), 0, 0.016 * math.sin(a / 16 * math.tau)) for a in range(17)]
     tube("venus_ring", ring, 0.0022, gold, sym)
     tube("venus_stem", [(0, 0, -0.016), (0, 0, -0.04)], 0.0022, gold, sym)
