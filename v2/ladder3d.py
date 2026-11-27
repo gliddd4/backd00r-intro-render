@@ -4,6 +4,8 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 source = open(os.path.join(HERE, "ladder.py")).read()
+source = source.replace("for size, low, high, tone, amount in ((34, 0.57, 0.64, (0.80, 0.66, 0.52, 1), 0.95), ", "for size, low, high, tone, amount in (")
+source = source.replace("fade_in.inputs[\"To Max\"].default_value = 0.85", "fade_in.inputs[\"To Max\"].default_value = 0.0")
 head = source[:source.index('rail("left",')]
 tail = source[source.index("glow = bpy.data.lights.new"):source.index('scene.render.filepath = os.path.join(OUT, "ladder.png")')]
 exec(compile(head, "ladder_head", "exec"))
@@ -69,13 +71,15 @@ ladder = bpy.data.objects.new("ladder3d", None)
 scene.collection.objects.link(ladder)
 rail_len = (top_l - foot_l).length
 burn = (flame_at - foot_l).length - 0.45
+RAIL_DEEP, RAIL_WIDE, STEP_WIDE, STEP_THICK = 0.10, 0.12, 0.13, 0.045
 parts = [
-    beam("left", foot_l, top_l, 0.11, 0.09, normal, wood("l", 1, char_from=burn, tint=0.82), wood("le", 11, char_from=burn, tint=2.15)),
-    beam("right", foot_r, top_r, 0.11, 0.09, normal, wood("r", 2, char_from=rail_len + 0.4, tint=0.82), wood("re", 12, char_from=rail_len + 0.4, tint=2.15)),
+    beam("left", foot_l, top_l, RAIL_DEEP, RAIL_WIDE, normal, wood("l", 1, char_from=burn, tint=0.82), wood("le", 11, char_from=burn, tint=0.82), 0.35),
+    beam("right", foot_r, top_r, RAIL_DEEP, RAIL_WIDE, normal, wood("r", 2, char_from=rail_len + 0.4, tint=0.82), wood("re", 12, char_from=rail_len + 0.4, tint=0.82), 0.35),
 ]
+on_top = normal * (RAIL_DEEP / 2 + STEP_THICK / 2)
 for n, (a, b) in enumerate(FIT["rungs"]):
-    rung_wood = wood("g%d" % n, 3 + n, char_from=None, tint=1.38)
-    parts.append(beam("rung%d" % n, Vector(a), Vector(b), 0.085, 0.055, up, rung_wood, rung_wood, 0.8))
+    step_wood = wood("g%d" % n, 3 + n, char_from=None, tint=0.95)
+    parts.append(beam("rung%d" % n, Vector(a) + on_top, Vector(b) + on_top, STEP_WIDE, STEP_THICK, up, step_wood, step_wood, 0.3))
 for obj in parts:
     world = obj.matrix_world.copy()
     obj.parent = ladder
