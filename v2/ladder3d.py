@@ -76,10 +76,13 @@ parts = [
     beam("left", foot_l, top_l, RAIL_DEEP, RAIL_WIDE, normal, wood("l", 1, char_from=burn, tint=0.82), wood("le", 11, char_from=burn, tint=0.82), 0.35),
     beam("right", foot_r, top_r, RAIL_DEEP, RAIL_WIDE, normal, wood("r", 2, char_from=rail_len + 0.4, tint=0.82), wood("re", 12, char_from=rail_len + 0.4, tint=0.82), 0.35),
 ]
-on_top = normal * (RAIL_DEEP / 2 + STEP_THICK / 2)
+flat = Vector((0, 0, 1)).cross(across).normalized()
+if flat.dot(normal) < 0:
+    flat = -flat
+on_top = normal * (RAIL_DEEP / 2) + Vector((0, 0, STEP_THICK / 2)) + flat * 0.0
 for n, (a, b) in enumerate(FIT["rungs"]):
     step_wood = wood("g%d" % n, 3 + n, char_from=None, tint=0.95)
-    parts.append(beam("rung%d" % n, Vector(a) + on_top, Vector(b) + on_top, STEP_WIDE, STEP_THICK, up, step_wood, step_wood, 0.3))
+    parts.append(beam("rung%d" % n, Vector(a) + on_top, Vector(b) + on_top, STEP_WIDE, STEP_THICK, flat, step_wood, step_wood, 0.3))
 for obj in parts:
     world = obj.matrix_world.copy()
     obj.parent = ladder
