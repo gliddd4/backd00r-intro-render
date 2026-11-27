@@ -71,7 +71,7 @@ ladder = bpy.data.objects.new("ladder3d", None)
 scene.collection.objects.link(ladder)
 rail_len = (top_l - foot_l).length
 burn = (flame_at - foot_l).length - 0.45
-RAIL_DEEP, RAIL_WIDE, STEP_WIDE, STEP_THICK = 0.136, 0.12, 0.085, 0.09
+RAIL_DEEP, RAIL_WIDE, STEP_WIDE, STEP_THICK = 0.136, 0.121, 0.065, 0.09
 parts = [
     beam("left", foot_l, top_l, RAIL_DEEP, RAIL_WIDE, normal, wood("l", 1, char_from=burn, tint=0.82), wood("le", 11, char_from=burn, tint=0.82), 0.35),
     beam("right", foot_r, top_r, RAIL_DEEP, RAIL_WIDE, normal, wood("r", 2, char_from=rail_len + 0.4, tint=0.82), wood("re", 12, char_from=rail_len + 0.4, tint=0.82), 0.35),
