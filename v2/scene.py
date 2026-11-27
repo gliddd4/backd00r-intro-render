@@ -2076,32 +2076,13 @@ def leather_wheel():
     return m
 
 
+WHEEL_HUB = np.array([-0.278, 0.255, 0.805])
+WHEEL_AXIS = np.array([0.0, -0.967, 0.254])
+
+
 def steer_wheel(root, parts):
-    best = None
-    for name, mesh in parts:
-        if any(name.startswith(prefix) for prefix in HIDDEN) or name.startswith("windows_main") or name.startswith("body"):
-            continue
-        co = points(mesh)
-        label = islands(mesh)
-        for part in np.unique(label):
-            pick = co[label == part]
-            if len(pick) < 200:
-                continue
-            lo, hi = pick.min(0), pick.max(0)
-            size = np.sort(hi - lo)
-            mid = (lo + hi) / 2
-            if 0.3 < size[2] < 0.45 and size[1] > 0.8 * size[2] and abs(mid[0] - SEAT[0]) < 0.15 and SEAT[1] < mid[1] < SEAT[1] + 1.0 and mid[2] < SEAT[2]:
-                score = abs(size[1] - size[2]) + abs(mid[0] - SEAT[0])
-                if best is None or score < best[0]:
-                    best = (score, mid, pick, name)
-    if best is None:
-        print("steering wheel not found", flush=True)
-        return
-    _, hub, ring, found = best
-    axis = np.linalg.eigh(np.cov((ring - hub).T))[1][:, 0]
-    if axis @ (np.array(SEAT[:]) - hub) < 0:
-        axis = -axis
-    print("steering wheel ring", found, [round(float(v), 3) for v in hub], [round(float(v), 3) for v in axis], flush=True)
+    hub = WHEEL_HUB
+    axis = WHEEL_AXIS / np.linalg.norm(WHEEL_AXIS)
     wheel_mat = leather_wheel()
     pieces = []
     for name, mesh in parts:
