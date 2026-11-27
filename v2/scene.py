@@ -2077,15 +2077,31 @@ def leather_wheel():
 
 
 def steer_wheel(root, parts):
-    signs = next((mesh for name, mesh in parts if name.startswith("steering_wheel_signs")), None)
-    if signs is None:
+    best = None
+    for name, mesh in parts:
+        if any(name.startswith(prefix) for prefix in HIDDEN) or name.startswith("windows_main") or name.startswith("body"):
+            continue
+        co = points(mesh)
+        label = islands(mesh)
+        for part in np.unique(label):
+            pick = co[label == part]
+            if len(pick) < 200:
+                continue
+            lo, hi = pick.min(0), pick.max(0)
+            size = np.sort(hi - lo)
+            mid = (lo + hi) / 2
+            if 0.3 < size[2] < 0.45 and size[1] > 0.8 * size[2] and abs(mid[0] - SEAT[0]) < 0.15 and SEAT[1] < mid[1] < SEAT[1] + 1.0 and mid[2] < SEAT[2]:
+                score = abs(size[1] - size[2]) + abs(mid[0] - SEAT[0])
+                if best is None or score < best[0]:
+                    best = (score, mid, pick, name)
+    if best is None:
+        print("steering wheel not found", flush=True)
         return
-    pts = points(signs)
-    hub = pts.mean(0)
-    print("steering hub", [round(float(v), 3) for v in hub], "signs size", [round(float(v), 3) for v in pts.max(0) - pts.min(0)], flush=True)
-    axis = np.linalg.eigh(np.cov((pts - hub).T))[1][:, 0]
+    _, hub, ring, found = best
+    axis = np.linalg.eigh(np.cov((ring - hub).T))[1][:, 0]
     if axis @ (np.array(SEAT[:]) - hub) < 0:
         axis = -axis
+    print("steering wheel ring", found, [round(float(v), 3) for v in hub], [round(float(v), 3) for v in axis], flush=True)
     wheel_mat = leather_wheel()
     pieces = []
     for name, mesh in parts:
@@ -2096,7 +2112,7 @@ def steer_wheel(root, parts):
         along = rel @ axis
         radial = np.linalg.norm(rel - np.outer(along, axis), axis=1)
         label = islands(mesh)
-        inside = (radial < 0.27) & (np.abs(along) < 0.16)
+        inside = (radial < 0.215) & (np.abs(along) < 0.1)
         take = np.zeros(len(co), bool)
         for part in np.unique(label[inside]):
             pick = label == part
@@ -2145,10 +2161,10 @@ def hang_freshener(root, parts):
     gold = surface("freshener_print", (214, 176, 96), 0.4, 0.6)
     for m in (string, card, gold):
         ghost(m)
-    tube("freshener_string", [(0, 0, 0), (0, 0, -0.2)], 0.0008, string, hook)
-    box("freshener_card", (0.075, 0.003, 0.1), (0, 0, -0.255), card, hook, bevel=0.004)
+    tube("freshener_string", [(0, 0, 0), (0, 0, -0.3)], 0.0008, string, hook)
+    box("freshener_card", (0.075, 0.003, 0.1), (0, 0, -0.355), card, hook, bevel=0.004)
     sym = empty("freshener_symbol", hook)
-    sym.location = (0, -0.002, -0.245)
+    sym.location = (0, -0.002, -0.345)
     ring = [(0.016 * math.cos(a / 16 * math.tau), 0, 0.016 * math.sin(a / 16 * math.tau)) for a in range(17)]
     tube("venus_ring", ring, 0.0022, gold, sym)
     tube("venus_stem", [(0, 0, -0.016), (0, 0, -0.04)], 0.0022, gold, sym)
