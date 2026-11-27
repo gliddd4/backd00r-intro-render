@@ -508,7 +508,7 @@ def flight_plan():
         return ladder_at + Vector((x, y, z))
 
     path = [(10.5, start), (11.3, start + Vector((0, 4, 20))), (12.05, start + Vector((0, 16, 45))), (12.85, near(0.9, -23, -2.4)), (13.7, near(0.25, -12.6, 1.35)), (14.4, near(0.2, -8.4, 2.9)), (14.95, near(0.32, -4.6, 3.62)), (15.6, near(0.32, -0.22, 3.66))]
-    look = [(10.5, aim), (11.3, start + Vector((0, 14, 32))), (12.05, start + Vector((0, 36, 53))), (12.85, near(0.2, 0, 0.9)), (13.7, near(0.0, 0, 1.45)), (14.4, near(0.3, 0, 3.3)), (14.95, near(0.32, 0, 3.66)), (15.6, near(0.32, 1, 3.66))]
+    look = [(10.5, aim), (11.3, start + Vector((0, 10, 34))), (12.05, start + Vector((0, 22, 59))), (12.85, near(0.2, 0, 0.9)), (13.7, near(0.0, 0, 1.45)), (14.4, near(0.3, 0, 3.3)), (14.95, near(0.32, 0, 3.66)), (15.6, near(0.32, 1, 3.66))]
     return start, ladder_at, (path, slopes(path, velocity)), (look, slopes(look, turn))
 
 START, LADDER_AT, PATH, LOOK = flight_plan()
