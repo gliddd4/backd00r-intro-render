@@ -1549,7 +1549,8 @@ def sea_slab(name, mat, ladder_at, low, high, resolution):
     top = op(group, "ADD", top, op(group, "MULTIPLY", mound, 5.0))
     top = op(group, "MINIMUM", top, ladder_at.z - 1.35)
     depth = op(group, "SUBTRACT", top, xyz.outputs["Z"])
-    density = op(group, "MULTIPLY", remap(group, depth, 0.0, 0.45), remap(group, xyz.outputs["Z"], low[2], low[2] + 1.0))
+    soft = max(0.45, 1.5 * (high[2] - low[2]) / resolution[2])
+    density = op(group, "MULTIPLY", remap(group, depth, 0.0, soft), remap(group, xyz.outputs["Z"], low[2], low[2] + 1.0))
     cube = new(group, "GeometryNodeVolumeCube")
     wire(group, density, cube.inputs["Density"])
     cube.inputs["Min"].default_value = low
@@ -1575,16 +1576,19 @@ def build_sea(ladder_at):
     x, y, z = ladder_at
     low, high = z - 12.5, z - 1.2
     near = sea_slab("sea_near", mat, ladder_at, (x - 70, y - 34, low), (x + 70, y + 200, high), (200, 330, 36))
-    far = sea_slab("sea_far", mat, ladder_at, (x - 1500, y + 200, low), (x + 1500, y + 2500, high), (320, 250, 14))
-    left = sea_slab("sea_left", mat, ladder_at, (x - 1500, y - 34, low), (x - 70, y + 200, high), (150, 26, 14))
-    right = sea_slab("sea_right", mat, ladder_at, (x + 70, y - 34, low), (x + 1500, y + 200, high), (150, 26, 14))
+    mid = sea_slab("sea_mid", mat, ladder_at, (x - 400, y + 200, low), (x + 400, y + 700, high), (300, 190, 18))
+    far = sea_slab("sea_far", mat, ladder_at, (x - 1500, y + 700, low), (x + 1500, y + 2500, high), (300, 180, 12))
+    left = sea_slab("sea_left", mat, ladder_at, (x - 1500, y - 34, low), (x - 70, y + 200, high), (150, 26, 12))
+    right = sea_slab("sea_right", mat, ladder_at, (x + 70, y - 34, low), (x + 1500, y + 200, high), (150, 26, 12))
+    mid_left = sea_slab("sea_mid_left", mat, ladder_at, (x - 1500, y + 200, low), (x - 400, y + 700, high), (110, 50, 12))
+    mid_right = sea_slab("sea_mid_right", mat, ladder_at, (x + 400, y + 200, low), (x + 1500, y + 700, high), (110, 50, 12))
     deep, t, out = bare("below_clouds")
     place = new(t, "ShaderNodeNewGeometry").outputs["Position"]
     emission = new(t, "ShaderNodeEmission")
     t.links.new(gradient(t, grain(t, place, (0.05, 0.05, 0.05), 6, 0.65), [(0.38, (54, 94, 150)), (0.55, (104, 146, 192)), (0.7, (176, 198, 216))]), emission.inputs["Color"])
     t.links.new(emission.outputs[0], out.inputs["Surface"])
     under = mesh_object("under", [(x - 1500, y - 200, low - 0.4), (x + 1500, y - 200, low - 0.4), (x + 1500, y + 2500, low - 0.4), (x - 1500, y + 2500, low - 0.4)], [(0, 1, 2, 3)], deep)
-    return [near, far, left, right, under]
+    return [near, mid, far, left, right, mid_left, mid_right, under]
 
 
 def build_clouds(base, ladder_at):
