@@ -121,10 +121,10 @@ TURN = int(os.environ.get("TURN", "0"))
 if TURN:
     views = ["turn%02d" % k for k in range(TURN)]
 scene.camera.rotation_euler = (math.pi / 2 + math.radians(FIT.get("camera_pitch", 0.0)), 0, 0)
-FRONT_DISTANCE = 1.5
+from bpy_extras.object_utils import world_to_camera_view
 
 
-def square_view():
+def square_view(cam_obj=None):
     fwd = Vector((0, 0, 1)).cross(across).normalized()
     if fwd.dot(normal) > 0:
         fwd = -fwd
@@ -132,8 +132,20 @@ def square_view():
     upv = right.cross(fwd).normalized()
     if upv.z < 0:
         upv = -upv
-    eye = (foot_l + foot_r) / 2 - fwd * FRONT_DISTANCE + upv * 1.65
-    return Matrix.Translation(eye) @ Matrix((right, upv, -fwd)).transposed().to_4x4()
+    corners = [obj.matrix_world @ Vector(c) for obj in parts for c in obj.bound_box]
+    low, high = Vector([min(c[i] for c in corners) for i in range(3)]), Vector([max(c[i] for c in corners) for i in range(3)])
+    center = (low + high) / 2
+    turn = Matrix((right, upv, -fwd)).transposed().to_4x4()
+    if cam_obj is None:
+        return Matrix.Translation(center - fwd * 3.0) @ turn
+    for step in range(200):
+        far = 1.0 + step * 0.05
+        cam_obj.matrix_world = Matrix.Translation(center - fwd * far) @ turn
+        bpy.context.view_layer.update()
+        seen_at = [world_to_camera_view(scene, cam_obj, c) for c in corners]
+        if all(0.08 <= v.x <= 0.92 and 0.12 <= v.y <= 0.88 and v.z > 0 for v in seen_at):
+            break
+    return cam_obj.matrix_world.copy()
 
 
 for k, view in enumerate(views):
@@ -142,9 +154,9 @@ for k, view in enumerate(views):
     if view == "front":
         cam_obj = scene.camera
         cam_obj.data.shift_y = 0
-        cam_obj.matrix_world = square_view()
         scene.render.resolution_x, scene.render.resolution_y = 540, 1170
         cam_obj.data.sensor_fit = "VERTICAL"
+        cam_obj.matrix_world = square_view(cam_obj)
         scene.render.film_transparent = False
     if view.startswith("turn"):
         cam_obj = scene.camera
