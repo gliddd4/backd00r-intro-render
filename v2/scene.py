@@ -1508,69 +1508,6 @@ def cloud_kind(seed, mat):
     return collection
 
 
-def sea_slab(name, mat, ladder_at, low, high, resolution):
-    group = bpy.data.node_groups.new(name, "GeometryNodeTree")
-    group.interface.new_socket(name="Geometry", in_out="OUTPUT", socket_type="NodeSocketGeometry")
-    position = new(group, "GeometryNodeInputPosition").outputs["Position"]
-    xyz = new(group, "ShaderNodeSeparateXYZ")
-    group.links.new(position, xyz.inputs[0])
-
-    def scaled_place(scale, flatten):
-        n = new(group, "ShaderNodeVectorMath", operation="MULTIPLY")
-        group.links.new(position, n.inputs[0])
-        n.inputs[1].default_value = (scale, scale, scale * flatten)
-        return n.outputs[0]
-
-    def billow(scale, detail, flatten=1.0):
-        n = new(group, "ShaderNodeTexNoise")
-        n.inputs["Scale"].default_value = 1
-        n.inputs["Detail"].default_value = detail
-        n.inputs["Roughness"].default_value = 0.6
-        group.links.new(scaled_place(scale, flatten), n.inputs["Vector"])
-        return n.outputs["Fac"]
-
-    def puffs(scale):
-        n = new(group, "ShaderNodeTexVoronoi")
-        n.inputs["Scale"].default_value = 1
-        group.links.new(scaled_place(scale, 0.6), n.inputs["Vector"])
-        d = op(group, "MINIMUM", n.outputs["Distance"], 1.0)
-        return op(group, "SQRT", op(group, "SUBTRACT", 1.0, op(group, "POWER", d, 2.0)))
-
-    base = ladder_at.z - 9.4
-    cover = op(group, "MULTIPLY", op(group, "SUBTRACT", billow(0.07, 3, 0.2), 0.5), 16.0)
-    top = op(group, "ADD", base, op(group, "MULTIPLY", puffs(0.045), 5.0))
-    top = op(group, "ADD", top, op(group, "MULTIPLY", puffs(0.2), 2.2))
-    top = op(group, "ADD", top, op(group, "MULTIPLY", puffs(0.55), 1.0))
-    top = op(group, "ADD", top, cover)
-    top = op(group, "ADD", top, op(group, "MULTIPLY", op(group, "SUBTRACT", billow(0.9, 5), 0.5), 2.0))
-    dx = op(group, "SUBTRACT", xyz.outputs["X"], ladder_at.x + 0.7)
-    dy = op(group, "SUBTRACT", xyz.outputs["Y"], ladder_at.y + 0.3)
-    near = op(group, "ADD", op(group, "POWER", op(group, "ABSOLUTE", dx), 2.0), op(group, "POWER", op(group, "ABSOLUTE", dy), 2.0))
-    mound = op(group, "POWER", 2.718, op(group, "MULTIPLY", near, -1 / 9.0))
-    top = op(group, "ADD", top, op(group, "MULTIPLY", mound, 5.0))
-    top = op(group, "MINIMUM", top, ladder_at.z - 1.35)
-    depth = op(group, "SUBTRACT", top, xyz.outputs["Z"])
-    soft = max(0.45, 1.5 * (high[2] - low[2]) / resolution[2])
-    density = op(group, "MULTIPLY", remap(group, depth, 0.0, soft), remap(group, xyz.outputs["Z"], low[2], low[2] + 1.0))
-    cube = new(group, "GeometryNodeVolumeCube")
-    wire(group, density, cube.inputs["Density"])
-    cube.inputs["Min"].default_value = low
-    cube.inputs["Max"].default_value = high
-    for axis, count in zip("XYZ", resolution):
-        cube.inputs["Resolution " + axis].default_value = count
-    paint = new(group, "GeometryNodeSetMaterial")
-    paint.inputs["Material"].default_value = mat
-    out = new(group, "NodeGroupOutput")
-    group.links.new(cube.outputs["Volume"], paint.inputs["Geometry"])
-    group.links.new(paint.outputs["Geometry"], out.inputs["Geometry"])
-    mesh = bpy.data.meshes.new(name)
-    mesh.materials.append(mat)
-    obj = link_object(bpy.data.objects.new(name, mesh))
-    modifier = obj.modifiers.new("cloud", "NODES")
-    modifier.node_group = group
-    return obj
-
-
 def cloud_field(add, rnd, x0, x1, y0, y1, z, spacing, small, big):
     field = []
     gx = x0
@@ -1586,25 +1523,23 @@ def cloud_field(add, rnd, x0, x1, y0, y1, z, spacing, small, big):
 
 
 def build_sea(ladder_at, add):
-    mat = cloud_matter("cloud_sea", 3.2, 0.05)
-    mat.cycles.volume_step_rate = 0.4
     x, y, z = ladder_at
     low, high = z - 12.5, z - 1.2
     rnd = random.Random(31)
     near = cloud_field(add, rnd, x - 70, x + 70, y - 34, y + 200, z - 7.0, 24.0, 7.0, 10.0)
     mid = cloud_field(add, rnd, x - 400, x + 400, y + 200, y + 700, z - 7.0, 34.0, 10.0, 14.0)
-    far = sea_slab("sea_far", mat, ladder_at, (x - 1500, y + 700, low), (x + 1500, y + 2500, high), (300, 180, 12))
-    left = sea_slab("sea_left", mat, ladder_at, (x - 1500, y - 34, low), (x - 70, y + 200, high), (150, 26, 12))
-    right = sea_slab("sea_right", mat, ladder_at, (x + 70, y - 34, low), (x + 1500, y + 200, high), (150, 26, 12))
-    mid_left = sea_slab("sea_mid_left", mat, ladder_at, (x - 1500, y + 200, low), (x - 400, y + 700, high), (110, 50, 12))
-    mid_right = sea_slab("sea_mid_right", mat, ladder_at, (x + 400, y + 200, low), (x + 1500, y + 700, high), (110, 50, 12))
+    far = cloud_field(add, rnd, x - 1500, x + 1500, y + 700, y + 2500, z - 9.0, 95.0, 30.0, 40.0)
+    left = cloud_field(add, rnd, x - 1500, x - 70, y - 34, y + 200, z - 7.0, 60.0, 16.0, 22.0)
+    right = cloud_field(add, rnd, x + 70, x + 1500, y - 34, y + 200, z - 7.0, 60.0, 16.0, 22.0)
+    mid_left = cloud_field(add, rnd, x - 1500, x - 400, y + 200, y + 700, z - 8.0, 70.0, 20.0, 28.0)
+    mid_right = cloud_field(add, rnd, x + 400, x + 1500, y + 200, y + 700, z - 8.0, 70.0, 20.0, 28.0)
     deep, t, out = bare("below_clouds")
     place = new(t, "ShaderNodeNewGeometry").outputs["Position"]
     emission = new(t, "ShaderNodeEmission")
     t.links.new(gradient(t, grain(t, place, (0.05, 0.05, 0.05), 6, 0.65), [(0.38, (54, 94, 150)), (0.55, (104, 146, 192)), (0.7, (176, 198, 216))]), emission.inputs["Color"])
     t.links.new(emission.outputs[0], out.inputs["Surface"])
     under = mesh_object("under", [(x - 1500, y - 200, low - 0.4), (x + 1500, y - 200, low - 0.4), (x + 1500, y + 2500, low - 0.4), (x - 1500, y + 2500, low - 0.4)], [(0, 1, 2, 3)], deep)
-    return near + mid + [far, left, right, mid_left, mid_right, under]
+    return near + mid + far + left + right + mid_left + mid_right + [under]
 
 
 def build_clouds(base, ladder_at):
