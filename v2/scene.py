@@ -1784,6 +1784,40 @@ def close_door(meshes):
     return math.degrees(angle)
 
 
+def weather(material):
+    t = material.node_tree
+    bsdf = t.nodes.get("Principled BSDF")
+    if bsdf is None:
+        return
+    place = new(t, "ShaderNodeTexCoord").outputs["Object"]
+    edge = remap(t, new(t, "ShaderNodeNewGeometry").outputs["Pointiness"], 0.52, 0.62)
+    blotch = remap(t, grain(t, place, (7.0, 7.0, 7.0), 5, 0.62), 0.42, 0.72)
+
+    def taken(name):
+        socket = bsdf.inputs[name]
+        if not socket.is_linked:
+            value = socket.default_value
+            return float(value) if isinstance(value, float) else tuple(value)
+        link = socket.links[0]
+        source = link.from_socket
+        t.links.remove(link)
+        return source
+
+    grimy = blend(t, op(t, "MULTIPLY", blotch, 0.14), taken("Base Color"), lin((40, 36, 32)))
+    t.links.new(blend(t, op(t, "MULTIPLY", edge, 0.22), grimy, lin((235, 230, 222))), bsdf.inputs["Base Color"])
+    patchy = op(t, "MULTIPLY", taken("Roughness"), op(t, "ADD", 0.88, op(t, "MULTIPLY", blotch, 0.3)))
+    wire(t, op(t, "ADD", patchy, op(t, "MULTIPLY", edge, 0.12)), bsdf.inputs["Roughness"])
+    bump = new(t, "ShaderNodeBump")
+    bump.inputs["Strength"].default_value = 0.06
+    bump.inputs["Distance"].default_value = 0.001
+    wire(t, grain(t, place, (140.0, 140.0, 140.0), 3, 0.55), bump.inputs["Height"])
+    if bsdf.inputs["Normal"].is_linked:
+        link = bsdf.inputs["Normal"].links[0]
+        t.links.new(link.from_socket, bump.inputs["Normal"])
+        t.links.remove(link)
+    t.links.new(bump.outputs["Normal"], bsdf.inputs["Normal"])
+
+
 def ghost(material):
     t = material.node_tree
     out = next((n for n in t.nodes if n.type == "OUTPUT_MATERIAL"), None)
@@ -1846,6 +1880,7 @@ def build_porsche():
                     if bsdf is not None and ("leather" in material.name or "steering" in material.name):
                         bsdf.inputs["Coat Weight"].default_value = 0.2
                         bsdf.inputs["Coat Roughness"].default_value = 0.3
+                    weather(material)
                     ghost(material)
         link_object(bpy.data.objects.new(name, mesh), root)
     print("porsche door turned %.1f deg, body size" % opened, [round(float(v), 2) for v in hi - lo], "ground", round(float(ground), 3), flush=True)
