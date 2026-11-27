@@ -672,7 +672,12 @@ def build_sky():
     t.links.new(aim.outputs["Vector"], toward.inputs[0])
     toward.inputs[1].default_value = tuple(heading(LIGHT_AZ, elevation))
     disc = remap(t, toward.outputs["Value"], math.cos(SUN_CORE * 1.2), math.cos(SUN_CORE * 0.8))
-    dusk = blend(t, disc, photo.outputs["Color"], capped.outputs[0])
+    plain = blend(t, disc, photo.outputs["Color"], capped.outputs[0])
+    vivid = new(t, "ShaderNodeHueSaturation")
+    vivid.inputs["Saturation"].default_value = 1.4
+    t.links.new(plain, vivid.inputs["Color"])
+    deep = blend(t, 1.0, vivid.outputs["Color"], remap(t, z, 0.1, 0.9, 1.0, 0.8), "MULTIPLY")
+    dusk = blend(t, new(t, "ShaderNodeLightPath").outputs["Is Camera Ray"], plain, deep)
     up = op(t, "ADD", op(t, "MULTIPLY", z, 0.5), 0.5)
     high = gradient(t, up, [(0.40, (96, 140, 190)), (0.495, (170, 208, 224)), (0.52, (132, 192, 224)), (0.57, (82, 148, 207)), (0.65, (40, 96, 170)), (0.80, (18, 46, 104)), (1.0, (6, 16, 46))])
     stars = new(t, "ShaderNodeTexVoronoi")
