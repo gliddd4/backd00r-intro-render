@@ -1149,11 +1149,11 @@ def build_road():
     sheet("road_far", -41.6, -26.0, -60, 14000, 0, asphalt)
     sealant = surface("crack_seal", (14, 14, 15), 0.32)
     patch = surface("asphalt_patch", (40, 40, 42), 0.85)
-    wear = surface("tyre_wear", (46, 46, 48), 0.55)
+    wear = surface("tyre_wear", (30, 30, 32), 0.5)
     marks = random.Random(91)
     for lane in (-3.6, 0.0, 3.6):
         for track in (-0.85, 0.85):
-            ribbon("wear", lambda y, c=lane + track: c, 0.32, -60, 3000, 0.002, wear, 25)
+            ribbon("wear", lambda y, c=lane + track: c, 0.2, -60, 3000, 0.002, wear, 25)
     y = -40.0
     while y < 1400:
         sheet("joint", -8.4, 7.2, y, y + 0.03, 0.003, sealant)
@@ -2180,7 +2180,7 @@ def main():
         scene.view_settings.exposure = 0.0 if clear else 1.0
         PHASE[1].outputs[0].default_value = span(t, 8.75, 9.05) * (1 - span(t, 9.6, 10.25))
         CLOCK[1].outputs[0].default_value = t
-        WINK["value"].outputs[0].default_value = wink_amount(t)
+        WINK["value"].outputs[0].default_value = 0.0
         opening = span(t, 14.05, 14.95)
         OPEN[1].outputs[0].default_value = opening
         hinge.rotation_euler = (0, 0, -math.radians(108) * opening)
