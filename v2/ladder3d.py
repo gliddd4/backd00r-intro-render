@@ -118,39 +118,35 @@ TURN = int(os.environ.get("TURN", "0"))
 if TURN:
     views = ["turn%02d" % k for k in range(TURN)]
 scene.camera.rotation_euler = (math.pi / 2 + math.radians(FIT.get("camera_pitch", 0.0)), 0, 0)
+FRONT_DISTANCE = 1.5
+
+
+def square_view():
+    fwd = Vector((0, 0, 1)).cross(across).normalized()
+    if fwd.dot(normal) > 0:
+        fwd = -fwd
+    right = across if across.dot(foot_r - foot_l) > 0 else -across
+    upv = right.cross(fwd).normalized()
+    if upv.z < 0:
+        upv = -upv
+    eye = (foot_l + foot_r) / 2 - fwd * FRONT_DISTANCE + upv * 1.65
+    return Matrix.Translation(eye) @ Matrix((right, upv, -fwd)).transposed().to_4x4()
+
+
 for k, view in enumerate(views):
     if k % shards != shard:
         continue
     if view == "front":
-        zz = Vector((0, 0, 1))
-        fwd = zz.cross(across).normalized()
-        foot = (foot_l + foot_r) / 2
-        if fwd.dot(normal) > 0:
-            fwd = -fwd
-        right = across if across.dot(foot_r - foot_l) > 0 else -across
-        upv = right.cross(fwd).normalized()
-        if upv.z < 0:
-            upv = -upv
-        eye = foot - fwd * 2.4 + upv * 1.65
         cam_obj = scene.camera
         cam_obj.data.shift_y = 0
-        cam_obj.matrix_world = Matrix.Translation(eye) @ Matrix((right, upv, -fwd)).transposed().to_4x4()
+        cam_obj.matrix_world = square_view()
         scene.render.resolution_x, scene.render.resolution_y = 540, 1170
         cam_obj.data.sensor_fit = "VERTICAL"
         scene.render.film_transparent = False
     if view.startswith("turn"):
         cam_obj = scene.camera
         start = Matrix.Translation(Vector((0, 0, 0))) @ Euler((math.pi / 2 + math.radians(FIT.get("camera_pitch", 0.0)), 0, 0)).to_matrix().to_4x4()
-        zz = Vector((0, 0, 1))
-        fwd = zz.cross(across).normalized()
-        if fwd.dot(normal) > 0:
-            fwd = -fwd
-        right = across if across.dot(foot_r - foot_l) > 0 else -across
-        upv = right.cross(fwd).normalized()
-        if upv.z < 0:
-            upv = -upv
-        eye = (foot_l + foot_r) / 2 - fwd * 2.4 + upv * 1.65
-        end = Matrix.Translation(eye) @ Matrix((right, upv, -fwd)).transposed().to_4x4()
+        end = square_view()
         f = int(view[4:]) / max(1, TURN - 1)
         f = f * f * (3 - 2 * f)
         loc = start.to_translation().lerp(end.to_translation(), f)
