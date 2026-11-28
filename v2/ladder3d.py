@@ -75,6 +75,13 @@ def beam(name, start, end, width, depth, side, materials, pick, shape=None, roug
     return obj
 
 
+flat_up = Vector((up.x, up.y, 0)).normalized()
+lean = math.radians(FIT["shape"]["lean_deg"])
+up = (Vector((0, 0, 1)) * math.cos(lean) + flat_up * math.sin(lean)) * up.length
+across = (across - up.normalized() * across.dot(up.normalized())).normalized()
+normal = across.cross(up).normalized()
+if normal.dot(-foot_l) < 0:
+    normal = -normal
 yaw_now = math.degrees(math.atan2(normal.x, normal.y))
 spin = Matrix.Rotation(math.radians(yaw_now - FIT["shape"]["yaw_deg"]), 3, "Z")
 pivot = (foot_l + foot_r) / 2 + up.normalized() * (top_l - foot_l).length / 2
