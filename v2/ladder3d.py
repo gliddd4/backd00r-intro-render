@@ -19,15 +19,18 @@ exec(compile(head, "ladder_head", "exec"))
 
 import json
 FIT = json.load(open(os.path.join(HERE, "ladder3d.json")))
-foot_l, top_l = Vector(FIT["rails"][0][0]), Vector(FIT["rails"][0][1])
-foot_r, top_r = Vector(FIT["rails"][1][0]), Vector(FIT["rails"][1][1])
-up = ((top_l - foot_l) + (top_r - foot_r)).normalized()
-across = foot_r - foot_l
-across = (across - up * across.dot(up)).normalized()
-normal = across.cross(up).normalized()
-if normal.dot(-foot_l) < 0:
-    normal = -normal
-
+SHAPE = FIT["shape"]
+POSE = FIT["pose"]
+yaw = math.radians(SHAPE["yaw_deg"])
+normal = Vector((math.sin(yaw), math.cos(yaw), 0.0))
+lean = math.radians(POSE["lean_deg"])
+up = Vector((0, 0, math.cos(lean))) - normal * math.sin(lean)
+across = up.cross(normal).normalized()
+foot_mid = Vector(POSE["foot"])
+foot_l, foot_r = foot_mid - across * SHAPE["rail_span"] / 2, foot_mid + across * SHAPE["rail_span"] / 2
+if foot_l.x / foot_l.y > foot_r.x / foot_r.y:
+    foot_l, foot_r = foot_r, foot_l
+    across = -across
 
 def beam(name, start, end, width, depth, side, materials, pick, shape=None, rough=1.0):
     axis = end - start
@@ -75,31 +78,51 @@ def beam(name, start, end, width, depth, side, materials, pick, shape=None, roug
     return obj
 
 
-flat_up = Vector((up.x, up.y, 0)).normalized()
-lean = math.radians(FIT["shape"]["lean_deg"])
-up = (Vector((0, 0, 1)) * math.cos(lean) + flat_up * math.sin(lean)) * up.length
-across = (across - up.normalized() * across.dot(up.normalized())).normalized()
-normal = across.cross(up).normalized()
-if normal.dot(-foot_l) < 0:
-    normal = -normal
-yaw_now = math.degrees(math.atan2(normal.x, normal.y))
-spin = Matrix.Rotation(math.radians(yaw_now - FIT["shape"]["yaw_deg"]), 3, "Z")
-pivot = (foot_l + foot_r) / 2 + up.normalized() * (top_l - foot_l).length / 2
-pivot.z = 0.0
-foot_l, foot_r = pivot + spin @ (foot_l - pivot), pivot + spin @ (foot_r - pivot)
-up, across, normal = spin @ up, spin @ across, spin @ normal
+def charred(m, amount, rise=0.0, length=1.0):
+    t = m.node_tree
+    bsdf = t.nodes["Principled BSDF"]
+    wood_color = bsdf.inputs["Base Color"].links[0].from_socket
+    p = node(t, "ShaderNodeTexCoord").outputs["Object"]
+    xyz = node(t, "ShaderNodeSeparateXYZ")
+    t.links.new(p, xyz.inputs[0])
+    height = math_node(t, "MULTIPLY", xyz.outputs["Z"], rise / max(length, 1e-3))
+    patches = noise_node(t, p, (7, 7, 3), 8, 0.7)
+    level = math_node(t, "ADD", math_node(t, "ADD", patches, height), amount - 0.5)
+    cover = node(t, "ShaderNodeMapRange")
+    cover.inputs["From Min"].default_value = 0.42
+    cover.inputs["From Max"].default_value = 0.52
+    t.links.new(level, cover.inputs["Value"])
+    cells = node(t, "ShaderNodeTexVoronoi", feature="DISTANCE_TO_EDGE")
+    cells.inputs["Scale"].default_value = 38
+    t.links.new(p, cells.inputs["Vector"])
+    crack = node(t, "ShaderNodeMapRange")
+    crack.inputs["From Min"].default_value = 0.0
+    crack.inputs["From Max"].default_value = 0.06
+    t.links.new(cells.outputs["Distance"], crack.inputs["Value"])
+    coal = ramp(t, noise_node(t, p, (40, 40, 40), 4, 0.6), [(0.3, (20, 15, 12)), (0.7, (58, 40, 30))])
+    coal = multiply(t, coal, ramp(t, crack.outputs[0], [(0.0, (90, 90, 90)), (1.0, (255, 255, 255))]))
+    edge = node(t, "ShaderNodeMapRange")
+    edge.inputs["From Min"].default_value = 0.34
+    edge.inputs["From Max"].default_value = 0.44
+    t.links.new(level, edge.inputs["Value"])
+    scorched = multiply(t, wood_color, ramp(t, edge.outputs[0], [(0.0, (255, 255, 255)), (1.0, (120, 82, 60))]))
+    mix = node(t, "ShaderNodeMixRGB", blend_type="MIX")
+    t.links.new(cover.outputs[0], mix.inputs[0])
+    t.links.new(scorched, mix.inputs[1])
+    t.links.new(coal, mix.inputs[2])
+    t.links.new(mix.outputs[0], bsdf.inputs["Base Color"])
+    return m
 
 
 ladder = bpy.data.objects.new("ladder3d", None)
 scene.collection.objects.link(ladder)
-SHAPE = FIT["shape"]
 RAIL_FACE = SHAPE["rail_face"]
 RAIL_SIDE = RAIL_FACE * SHAPE["rail_side_per_face"]
 STEP_THICK = SHAPE["step_thick"]
-STEP_WIDE = (foot_r - foot_l).length + RAIL_FACE + SHAPE["step_overhang"]
+STEP_WIDE = SHAPE["rail_span"] + RAIL_FACE
 STEP_LONG = STEP_WIDE / SHAPE["step_wide_per_long"]
 gap = SHAPE["bottom_gap"]
-steps_up = [SHAPE["lowest_step"]]
+steps_up = [SHAPE["lowest_step_gaps"] * gap]
 for g in SHAPE["gaps_bottom_up"]:
     steps_up.append(steps_up[-1] + g * gap)
 rail_len = steps_up[-1] + SHAPE["rail_above_top_step"] * gap
@@ -124,8 +147,9 @@ def rail_pick(where):
     return 0
 
 
-rail_wood = [wood("rail_l", 1, char_from=SHAPE["rail_char_from"], char=SHAPE["rail_char"], tint=0.9), wood("rail_end", 11, char_from=-5.0, char=0.9, tint=0.7)]
-rail_wood_r = [wood("rail_r", 2, char_from=SHAPE["rail_char_from"], char=SHAPE["rail_char"], tint=0.9), rail_wood[1]]
+rail_end = charred(wood("rail_end", 11, tint=0.7), SHAPE["rail_char"])
+rail_wood = [charred(wood("rail_l", 1, tint=0.95), SHAPE["rail_char"], SHAPE["rail_char_rise"], rail_len), rail_end]
+rail_wood_r = [charred(wood("rail_r", 2, tint=0.95), SHAPE["rail_char"], SHAPE["rail_char_rise"], rail_len), rail_end]
 parts = []
 for name, foot, top, mats in (("left", foot_l, top_l, rail_wood), ("right", foot_r, top_r, rail_wood_r)):
     side_to_other = (foot_r - foot_l) if name == "left" else (foot_l - foot_r)
@@ -140,7 +164,7 @@ STEP_LOOKS = SHAPE["steps_top_down"]
 for k, along in enumerate(reversed(steps_up)):
     look = STEP_LOOKS[k]
     char = SHAPE["step_char_top"] + (SHAPE["step_char_bottom"] - SHAPE["step_char_top"]) * k / (len(steps_up) - 1)
-    body = wood("step%d" % k, 3 + k, char_from=STEP_WIDE * 0.5, char=char, tint=0.95)
+    body = charred(wood("step%d" % k, 3 + k, tint=0.95), char)
     left_end = wood("step%d_l" % k, 20 + k, tint=look.get("left_end_tint", 0.55))
     right_end = wood("step%d_r" % k, 30 + k, tint=look.get("right_end_tint", 0.55))
     bow = look.get("right_end_bow", 0.0)
