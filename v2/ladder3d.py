@@ -8,6 +8,8 @@ source = source.replace("for size, low, high, tone, amount in ((34, 0.57, 0.64, 
 source = source.replace("fade_in.inputs[\"To Max\"].default_value = 0.85", "fade_in.inputs[\"To Max\"].default_value = 0.6")
 source = source.replace("worn.inputs[2].default_value = (0.58, 0.42, 0.30, 1)", "worn.inputs[2].default_value = (0.80, 0.70, 0.60, 1)")
 source = source.replace("(0.46, (172, 104, 70)), (0.57, (206, 138, 98))", "(0.46, (172, 114, 76)), (0.57, (210, 156, 112))")
+source = source.replace("ramp(t, pits, [(0.32, (96, 72, 62)), (0.41, (255, 255, 255))])", "ramp(t, pits, [(0.32, (170, 140, 120)), (0.41, (255, 255, 255))])")
+source = source.replace("ramp(t, knots, [(0.34, (120, 92, 80)), (0.44, (255, 255, 255))])", "ramp(t, knots, [(0.34, (180, 150, 128)), (0.44, (255, 255, 255))])")
 head = source[:source.index('rail("left",')]
 tail = source[source.index("glow = bpy.data.lights.new"):source.index('scene.render.filepath = os.path.join(OUT, "ladder.png")')]
 exec(compile(head, "ladder_head", "exec"))
@@ -72,8 +74,8 @@ def beam(name, start, end, width, depth, side, material, edge, rough=1.0, square
 ladder = bpy.data.objects.new("ladder3d", None)
 scene.collection.objects.link(ladder)
 rail_len = (top_l - foot_l).length
-burn = (flame_at - foot_l).length - 0.45
-RAIL_DEEP, RAIL_WIDE, STEP_WIDE, STEP_THICK, STEP_OVERHANG = 0.136, 0.121, 0.085, 0.068, 0.15
+burn = (flame_at - foot_l).length - 0.2
+RAIL_DEEP, RAIL_WIDE, STEP_WIDE, STEP_THICK, STEP_OVERHANG = 0.136, 0.121, 0.12, 0.042, 0.15
 parts = [
     beam("left", foot_l, top_l, RAIL_DEEP, RAIL_WIDE, normal, wood("l", 1, char_from=burn, tint=1.0), wood("le", 11, char_from=burn, tint=1.0), 0.35, square=0.85),
     beam("right", foot_r, top_r, RAIL_DEEP, RAIL_WIDE, normal, wood("r", 2, char_from=rail_len + 0.4, tint=1.0), wood("re", 12, char_from=rail_len + 0.4, tint=1.0), 0.35, square=0.85),
@@ -101,7 +103,7 @@ for n, (a, b) in enumerate(FIT["rungs"]):
     lift = settle(a, b)
     step_wood = wood("g%d" % n, 3 + n, char_from=None, tint=0.95)
     b = Vector(b) + (Vector(b) - Vector(a)).normalized() * STEP_OVERHANG
-    parts.append(beam("rung%d" % n, Vector(a) + lift, b + lift, STEP_WIDE, STEP_THICK, flat, step_wood, step_wood, 0.3))
+    parts.append(beam("rung%d" % n, Vector(a) + lift, b + lift, STEP_WIDE, STEP_THICK, flat, step_wood, step_wood, 0.3, square=1.0))
 for obj in parts:
     world = obj.matrix_world.copy()
     obj.parent = ladder
