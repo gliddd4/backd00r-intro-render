@@ -77,8 +77,9 @@ def beam(name, start, end, width, depth, side, materials, pick, shape=None, roug
 
 yaw_now = math.degrees(math.atan2(normal.x, normal.y))
 spin = Matrix.Rotation(math.radians(yaw_now - FIT["shape"]["yaw_deg"]), 3, "Z")
-foot_mid = (foot_l + foot_r) / 2
-foot_l, foot_r = foot_mid + spin @ (foot_l - foot_mid), foot_mid + spin @ (foot_r - foot_mid)
+pivot = (foot_l + foot_r) / 2 + up.normalized() * (top_l - foot_l).length / 2
+pivot.z = 0.0
+foot_l, foot_r = pivot + spin @ (foot_l - pivot), pivot + spin @ (foot_r - pivot)
 up, across, normal = spin @ up, spin @ across, spin @ normal
 
 
@@ -116,8 +117,8 @@ def rail_pick(where):
     return 0
 
 
-rail_wood = [wood("rail_l", 1, char_from=SHAPE["rail_char_from"], char=1.0, tint=0.9), wood("rail_end", 11, char_from=-5.0, char=0.9, tint=0.7)]
-rail_wood_r = [wood("rail_r", 2, char_from=SHAPE["rail_char_from"], char=1.0, tint=0.9), rail_wood[1]]
+rail_wood = [wood("rail_l", 1, char_from=SHAPE["rail_char_from"], char=SHAPE["rail_char"], tint=0.9), wood("rail_end", 11, char_from=-5.0, char=0.9, tint=0.7)]
+rail_wood_r = [wood("rail_r", 2, char_from=SHAPE["rail_char_from"], char=SHAPE["rail_char"], tint=0.9), rail_wood[1]]
 parts = []
 for name, foot, top, mats in (("left", foot_l, top_l, rail_wood), ("right", foot_r, top_r, rail_wood_r)):
     side_to_other = (foot_r - foot_l) if name == "left" else (foot_l - foot_r)
@@ -163,7 +164,7 @@ bpy.ops.wm.save_as_mainfile(filepath=os.path.join(OUT, "ladder3d.blend"))
 
 from mathutils import Euler
 shard, shards = (int(v) for v in sys.argv[-2:])
-views = ["cover", "front"]
+views = ["cover", "front"] + ["height%+.1f" % h for h in FIT["shape"]["test_heights"]]
 TURN = int(os.environ.get("TURN", "0"))
 if TURN:
     views = ["turn%02d" % k for k in range(TURN)]
@@ -217,6 +218,15 @@ for k, view in enumerate(views):
         cam_obj.data.shift_y = (HORIZON - 499) / 1000 * (1 - f)
         cam_obj.data.sensor_fit = "HORIZONTAL"
         scene.render.resolution_x, scene.render.resolution_y = 540, 1170
+        scene.render.film_transparent = False
+    if view.startswith("height"):
+        cam_obj = scene.camera
+        centre = (foot_l + foot_r) / 2 + up.normalized() * rail_len / 2
+        cam_obj.location = Vector((0, 0, float(view[6:])))
+        cam_obj.rotation_euler = (centre - cam_obj.location).to_track_quat("-Z", "Y").to_euler()
+        cam_obj.data.shift_y = 0
+        scene.render.resolution_x, scene.render.resolution_y = 1000, 998
+        cam_obj.data.sensor_fit = "HORIZONTAL"
         scene.render.film_transparent = False
     scene.render.filepath = os.path.join(OUT, "ladder3d_%s.png" % view)
     bpy.ops.render.render(write_still=True)

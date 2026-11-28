@@ -30,7 +30,7 @@
   "rail_face": 0.06,
   "rail_side_per_face": 4,
   "top_shave": 0.09,
-  "step_thick": 0.03,
+  "step_thick": 0.045,
   "step_overhang": 0.1,
   "step_wide_per_long": 6,
   "bottom_gap": 0.463,
@@ -43,7 +43,7 @@
    0.6667
   ],
   "rail_above_top_step": 1.0,
-  "rail_char_from": 0.4,
+  "rail_char_from": 1.2,
   "step_char_top": 0.85,
   "step_char_bottom": 0.1,
   "steps_top_down": [
@@ -59,6 +59,13 @@
    },
    {}
   ],
-  "yaw_deg": 135
+  "yaw_deg": 135,
+  "rail_char": 0.75,
+  "test_heights": [
+   -1.0,
+   -0.5,
+   0.5,
+   1.0
+  ]
  }
 }
