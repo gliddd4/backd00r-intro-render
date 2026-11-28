@@ -10,6 +10,9 @@ source = source.replace("worn.inputs[2].default_value = (0.58, 0.42, 0.30, 1)", 
 source = source.replace("(0.46, (172, 104, 70)), (0.57, (206, 138, 98))", "(0.46, (172, 114, 76)), (0.57, (210, 156, 112))")
 source = source.replace("ramp(t, pits, [(0.32, (96, 72, 62)), (0.41, (255, 255, 255))])", "ramp(t, pits, [(0.32, (170, 140, 120)), (0.41, (255, 255, 255))])")
 source = source.replace("ramp(t, knots, [(0.34, (120, 92, 80)), (0.44, (255, 255, 255))])", "ramp(t, knots, [(0.34, (180, 150, 128)), (0.44, (255, 255, 255))])")
+source = source.replace("def wood(name, seed, char_from=None, tint=1.0):", "def wood(name, seed, char_from=None, tint=1.0, char=1.0):")
+source = source.replace("(1.0, (42, 30, 26))", "(1.0, tuple(round(255 - (255 - c) * char) for c in (42, 30, 26)))")
+source = source.replace("(1.0, (56, 46, 44))", "(1.0, tuple(round(255 - (255 - c) * char) for c in (56, 46, 44)))")
 head = source[:source.index('rail("left",')]
 tail = source[source.index("glow = bpy.data.lights.new"):source.index('scene.render.filepath = os.path.join(OUT, "ladder.png")')]
 exec(compile(head, "ladder_head", "exec"))
@@ -18,7 +21,6 @@ import json
 FIT = json.load(open(os.path.join(HERE, "ladder3d.json")))
 foot_l, top_l = Vector(FIT["rails"][0][0]), Vector(FIT["rails"][0][1])
 foot_r, top_r = Vector(FIT["rails"][1][0]), Vector(FIT["rails"][1][1])
-flame_at = Vector(FIT["top_left"])
 up = ((top_l - foot_l) + (top_r - foot_r)).normalized()
 across = foot_r - foot_l
 across = (across - up * across.dot(up)).normalized()
@@ -27,7 +29,7 @@ if normal.dot(-foot_l) < 0:
     normal = -normal
 
 
-def beam(name, start, end, width, depth, side, material, edge, rough=1.0, square=0.97):
+def beam(name, start, end, width, depth, side, materials, pick, shape=None, rough=1.0):
     axis = end - start
     length = axis.length
     z = axis.normalized()
@@ -35,7 +37,7 @@ def beam(name, start, end, width, depth, side, material, edge, rough=1.0, square
     y = z.cross(x)
     basis = Matrix((x, y, z)).transposed().to_4x4()
     bm = bmesh.new()
-    rings, sides = max(12, int(length * 40)), 28
+    rings, sides = max(12, int(length * 40)), 32
     rows = []
     for i in range(rings + 1):
         f = i / rings
@@ -43,28 +45,30 @@ def beam(name, start, end, width, depth, side, material, edge, rough=1.0, square
         for j in range(sides):
             a = j / sides * math.tau
             c, s = math.cos(a), math.sin(a)
-            r = 1.0 / max(abs(c), abs(s)) ** square
+            r = 1.0 / max(abs(c), abs(s))
             p = Vector((c * r * width / 2, s * r * depth / 2, f * length))
+            if shape:
+                p = shape(p, f, length)
             world = start + basis.to_3x3() @ p
             n = noise.noise(world * 7.0) * 1.5 + noise.noise(world * 19.0) * 0.8 + noise.noise(world * 47.0) * 0.4
             chip = max(0.0, noise.noise(world * 4.5 + Vector((7, 3, 1))) - 0.25) * 1.5
             out = Vector((c, s, 0)).normalized()
-            row.append(bm.verts.new(p + out * 0.007 * rough * (n - chip * 2.0)))
+            row.append(bm.verts.new(p + out * 0.004 * rough * (n - chip * 2.0)))
         rows.append(row)
     for a_row, b_row in zip(rows, rows[1:]):
         for j in range(sides):
             face = bm.faces.new((a_row[j], a_row[(j + 1) % sides], b_row[(j + 1) % sides], b_row[j]))
-            face.material_index = 1 if sides // 4 <= j < sides // 2 else 0
-    bm.faces.new(rows[0])
-    bm.faces.new(list(reversed(rows[-1])))
+            face.material_index = pick(j / sides)
+    first = bm.faces.new(rows[0])
+    last = bm.faces.new(list(reversed(rows[-1])))
+    first.material_index, last.material_index = pick("start"), pick("end")
+    bmesh.ops.triangulate(bm, faces=[first, last])
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
     mesh = bpy.data.meshes.new(name)
     bm.to_mesh(mesh)
     bm.free()
-    mesh.materials.append(material)
-    mesh.materials.append(edge)
-    for poly in mesh.polygons:
-        poly.use_smooth = True
+    for m in materials:
+        mesh.materials.append(m)
     obj = bpy.data.objects.new(name, mesh)
     scene.collection.objects.link(obj)
     obj.matrix_world = Matrix.Translation(start) @ basis
@@ -73,37 +77,71 @@ def beam(name, start, end, width, depth, side, material, edge, rough=1.0, square
 
 ladder = bpy.data.objects.new("ladder3d", None)
 scene.collection.objects.link(ladder)
-rail_len = (top_l - foot_l).length
-burn = (flame_at - foot_l).length - 0.2
-RAIL_DEEP, RAIL_WIDE, STEP_WIDE, STEP_THICK, STEP_OVERHANG = 0.136, 0.121, 0.12, 0.042, 0.15
-parts = [
-    beam("left", foot_l, top_l, RAIL_DEEP, RAIL_WIDE, normal, wood("l", 1, char_from=burn, tint=1.0), wood("le", 11, char_from=burn, tint=1.0), 0.35, square=0.85),
-    beam("right", foot_r, top_r, RAIL_DEEP, RAIL_WIDE, normal, wood("r", 2, char_from=rail_len + 0.4, tint=1.0), wood("re", 12, char_from=rail_len + 0.4, tint=1.0), 0.35, square=0.85),
-]
+SHAPE = FIT["shape"]
+RAIL_FACE = SHAPE["rail_face"]
+RAIL_SIDE = RAIL_FACE * SHAPE["rail_side_per_face"]
+STEP_THICK = SHAPE["step_thick"]
+STEP_WIDE = (foot_r - foot_l).length + RAIL_FACE + SHAPE["step_overhang"]
+STEP_LONG = STEP_WIDE / SHAPE["step_wide_per_long"]
+gap = SHAPE["bottom_gap"]
+steps_up = [SHAPE["lowest_step"]]
+for g in SHAPE["gaps_bottom_up"]:
+    steps_up.append(steps_up[-1] + g * gap)
+rail_len = steps_up[-1] + SHAPE["rail_above_top_step"] * gap
+top_l, top_r = foot_l + up * rail_len, foot_r + up * rail_len
+flame_at = top_l - up * 0.08
+
+
+def shaved(inner):
+    drop = SHAPE["top_shave"]
+
+    def shape(p, f, length):
+        inward = p.y * inner / (RAIL_FACE / 2)
+        if f > 0.99:
+            p.z -= drop * max(0.0, inward)
+        return p
+    return shape
+
+
+def rail_pick(where):
+    if where in ("start", "end"):
+        return 1
+    return 0
+
+
+rail_wood = [wood("rail_l", 1, char_from=SHAPE["rail_char_from"], char=1.0, tint=0.9), wood("rail_end", 11, char_from=-5.0, char=0.9, tint=0.7)]
+rail_wood_r = [wood("rail_r", 2, char_from=SHAPE["rail_char_from"], char=1.0, tint=0.9), rail_wood[1]]
+parts = []
+for name, foot, top, mats in (("left", foot_l, top_l, rail_wood), ("right", foot_r, top_r, rail_wood_r)):
+    side_to_other = (foot_r - foot_l) if name == "left" else (foot_l - foot_r)
+    x_axis = (normal - up * normal.dot(up)).normalized()
+    inner = 1.0 if up.cross(x_axis).dot(side_to_other) > 0 else -1.0
+    parts.append(beam(name, foot, top, RAIL_SIDE, RAIL_FACE, normal, mats, rail_pick, shaved(inner)))
+
 flat = Vector((0, 0, 1)).cross(across).normalized()
 if flat.dot(normal) < 0:
     flat = -flat
-on_top = normal * (RAIL_DEEP / 2) + Vector((0, 0, STEP_THICK / 2)) + flat * 0.0
-pitch = math.radians(FIT.get("camera_pitch", 0.0))
+STEP_LOOKS = SHAPE["steps_top_down"]
+for k, along in enumerate(reversed(steps_up)):
+    look = STEP_LOOKS[k]
+    char = SHAPE["step_char_top"] + (SHAPE["step_char_bottom"] - SHAPE["step_char_top"]) * k / (len(steps_up) - 1)
+    body = wood("step%d" % k, 3 + k, char_from=STEP_WIDE * 0.5, char=char, tint=0.95)
+    left_end = wood("step%d_l" % k, 20 + k, tint=look.get("left_end_tint", 0.55))
+    right_end = wood("step%d_r" % k, 30 + k, tint=look.get("right_end_tint", 0.55))
+    bow = look.get("right_end_bow", 0.0)
 
+    def shape(p, f, length, bow=bow):
+        if bow and f > 0.999:
+            p.z += bow * (1 - (p.x / (STEP_LONG / 2)) ** 2)
+        return p
 
-def seen(q):
-    yy = q.y * math.cos(pitch) + q.z * math.sin(pitch)
-    zz = -q.y * math.sin(pitch) + q.z * math.cos(pitch)
-    return Vector((q.x / yy, zz / yy))
+    def pick(where):
+        return {"start": 1, "end": 2}.get(where, 0) if isinstance(where, str) else 0
 
-
-def settle(a, b):
-    mid = (Vector(a) + Vector(b)) / 2
-    best = min((k / 2000.0 for k in range(-1000, 1001)), key=lambda t: (seen(mid + on_top - up * t) - seen(mid)).length)
-    return on_top - up * best
-
-
-for n, (a, b) in enumerate(FIT["rungs"]):
-    lift = settle(a, b)
-    step_wood = wood("g%d" % n, 3 + n, char_from=None, tint=0.95)
-    b = Vector(b) + (Vector(b) - Vector(a)).normalized() * STEP_OVERHANG
-    parts.append(beam("rung%d" % n, Vector(a) + lift, b + lift, STEP_WIDE, STEP_THICK, flat, step_wood, step_wood, 0.3, square=1.0))
+    centre_l = foot_l + up * along + normal * (RAIL_SIDE / 2) + flat * (STEP_LONG / 2) + Vector((0, 0, STEP_THICK / 2))
+    a = centre_l - across * (RAIL_FACE / 2)
+    b = a + across * STEP_WIDE
+    parts.append(beam("step%d" % (k + 1), a, b, STEP_LONG, STEP_THICK, flat, [body, left_end, right_end], pick, shape, 0.5))
 for obj in parts:
     world = obj.matrix_world.copy()
     obj.parent = ladder
