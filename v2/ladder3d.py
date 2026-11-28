@@ -75,6 +75,13 @@ def beam(name, start, end, width, depth, side, materials, pick, shape=None, roug
     return obj
 
 
+yaw_now = math.degrees(math.atan2(normal.x, normal.y))
+spin = Matrix.Rotation(math.radians(yaw_now - FIT["shape"]["yaw_deg"]), 3, "Z")
+foot_mid = (foot_l + foot_r) / 2
+foot_l, foot_r = foot_mid + spin @ (foot_l - foot_mid), foot_mid + spin @ (foot_r - foot_mid)
+up, across, normal = spin @ up, spin @ across, spin @ normal
+
+
 ladder = bpy.data.objects.new("ladder3d", None)
 scene.collection.objects.link(ladder)
 SHAPE = FIT["shape"]
